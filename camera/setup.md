@@ -25,6 +25,30 @@ Then open `http://<pi-ip>:8000` on your laptop.
 Defaults to 640x480 — enough to check framing and focus without choking a Pi 3B+ over
 Wi-Fi. Bump it once it works: `--size 1280x720`. Port with `--port`.
 
+## Live QR-code scanning while streaming
+
+`qr_stream.py` is the same MJPEG-over-HTTP stream, but each frame is scanned for QR
+codes: detected codes get a green box drawn on the video and their contents printed
+once to the terminal (not spammed every frame while the same code stays in view).
+
+One-time setup on the Pi:
+
+```bash
+sudo apt install -y libzbar0 python3-pil
+pip3 install pyzbar
+```
+
+Then:
+
+```bash
+python3 camera/qr_stream.py --selftest   # sanity check, no camera required
+python3 camera/qr_stream.py              # prints the URL, ctrl-c to stop
+```
+
+Same `--size`/`--port` flags as `stream.py`. This runs the JPEG encode in software
+(needed to draw the overlay), so it's slower/heavier on the Pi 3B+ than the plain
+hardware-encoded `stream.py` — expect a few FPS rather than smooth video.
+
 ## Python script
 - with GUI
 ```bash
