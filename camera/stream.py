@@ -17,7 +17,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 # ponytail: tuning knobs for a Pi 3B+ over Wi-Fi. Bump RESOLUTION once the stream
 # works and you need detail on the plate; swap to JpegEncoder only if the hardware
 # MJPEG encoder misbehaves (software JPEG costs a lot more CPU on a Pi 3).
-RESOLUTION = (640, 480)
+RESOLUTION = (1640, 1232)
 PORT = 8000
 
 PAGE = b"""<!DOCTYPE html>
