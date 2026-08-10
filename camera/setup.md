@@ -9,6 +9,22 @@ sudo apt install -y python3-picamera2 #for_full_version
 
 
 
+## Live stream (headless, view from your laptop)
+
+`stream.py` serves an MJPEG stream over HTTP — run it on the Pi over SSH, watch it in a
+browser on any machine on the same network. No GUI needed on the Pi.
+
+```bash
+python3 camera/stream.py --selftest     # sanity check, no camera required
+python3 camera/stream.py                # prints the URL, ctrl-c to stop
+hostname -I                             # the Pi's IP, if the printed one looks wrong
+```
+
+Then open `http://<pi-ip>:8000` on your laptop.
+
+Defaults to 640x480 — enough to check framing and focus without choking a Pi 3B+ over
+Wi-Fi. Bump it once it works: `--size 1280x720`. Port with `--port`.
+
 ## Python script
 - with GUI
 ```bash
