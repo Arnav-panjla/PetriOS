@@ -59,9 +59,15 @@ def detect_disks(gray, w, dish):
     return disks
 
 
+MIN_ZONE_EDGE_STRENGTH = 2.0  # minimum tonal-transition sharpness to count as a real zone boundary
+
+
 def find_zone_radius(gray, x, y, r_disk, max_r):
     """Radial intensity profile around a disk center; the zone boundary is the
-    radius with the sharpest tonal transition (largest local derivative)."""
+    radius with the sharpest tonal transition (largest local derivative).
+    Returns None if there's no transition sharp enough to trust (e.g. the
+    bacteria grew right up to the disk with no inhibition, or the disk is too
+    close to the dish edge to leave any room to search)."""
     lo = int(r_disk * 1.3)
     if max_r - lo < 10:
         return None
@@ -75,12 +81,14 @@ def find_zone_radius(gray, x, y, r_disk, max_r):
     means = np.array(means, dtype=np.float32)
     smoothed = np.convolve(means, np.ones(5) / 5, mode="same")
     deriv = np.abs(np.diff(smoothed))
-    if deriv.size == 0:
+    if deriv.size == 0 or deriv.max() < MIN_ZONE_EDGE_STRENGTH:
         return None
     return radii[int(np.argmax(deriv))]
 
 
 def detect_zones(gray, w, dish, disks):
+    """One zone per disk, or none if no confident boundary was found (see
+    MIN_ZONE_EDGE_STRENGTH) -- not every disk shows a visible zone."""
     dx, dy, dr = dish
     zones = []
     for x, y, r in disks:
@@ -88,10 +96,16 @@ def detect_zones(gray, w, dish, disks):
         # zones of inhibition are a few disk-widths across; capping the search
         # range keeps the derivative peak from latching onto the dish rim or a
         # neighboring disk's halo instead of this disk's own boundary
-        max_r = min(room_left_in_dish, r * 5)
+        desired_max_r = r * 5
+        max_r = min(room_left_in_dish, desired_max_r)
         zr = find_zone_radius(gray, x, y, r, max_r)
-        if zr is not None:
-            zones.append((x, y, zr))
+        if zr is None:
+            continue
+        # a disk near the dish wall has its search window cut short by the
+        # wall itself, not by finding a real edge -- the radius is then a
+        # lower bound, not the true (occluded) zone size
+        clipped = room_left_in_dish < desired_max_r and zr >= max_r - 2
+        zones.append((x, y, zr, clipped))
     return zones
 
 
@@ -102,10 +116,12 @@ def annotate(img, dish, zones, disks, mm_per_px):
     cv2.putText(out, f"dish R={dr * mm_per_px:.1f}mm", (int(dx - dr), int(dy - dr) - 5),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1, cv2.LINE_AA)
 
-    for x, y, r in zones:
-        cv2.circle(out, (int(x), int(y)), int(r), (0, 200, 0), 2)  # green
-        cv2.putText(out, f"R={r * mm_per_px:.1f}mm", (int(x - r), int(y - r) - 5),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 200, 0), 1, cv2.LINE_AA)
+    for x, y, r, clipped in zones:
+        color = (211, 0, 148)  # purple
+        cv2.circle(out, (int(x), int(y)), int(r), color, 2)
+        label = f"R>={r * mm_per_px:.1f}mm*" if clipped else f"R={r * mm_per_px:.1f}mm"
+        cv2.putText(out, label, (int(x - r), int(y - r) - 5),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.35, color, 1, cv2.LINE_AA)
 
     for x, y, r in disks:
         cv2.circle(out, (int(x), int(y)), int(r), (0, 0, 255), 2)  # red
@@ -127,10 +143,14 @@ def process(path):
     zones = detect_zones(gray, w, dish, disks)
 
     print(f"dish: r={dish[2]:.1f}px -> R={dish[2] * mm_per_px:.1f}mm")
-    for x, y, r in zones:
-        print(f"zone at ({x:.0f},{y:.0f}): r={r:.1f}px -> R={r * mm_per_px:.1f}mm")
     for x, y, r in disks:
         print(f"disk at ({x:.0f},{y:.0f}): r={r:.1f}px -> R={r * mm_per_px:.1f}mm")
+    for x, y, r, clipped in zones:
+        note = " (clipped by dish edge, lower bound)" if clipped else ""
+        print(f"zone at ({x:.0f},{y:.0f}): r={r:.1f}px -> R={r * mm_per_px:.1f}mm{note}")
+    no_zone = len(disks) - len(zones)
+    if no_zone:
+        print(f"{no_zone} disk(s) had no detectable zone of inhibition")
 
     return annotate(img, dish, zones, disks, mm_per_px)
 
