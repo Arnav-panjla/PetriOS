@@ -1,6 +1,21 @@
-# Hardware Specs
+# Hardware specs
 
-Initial spec notes and open questions from early research. Values marked with `???` are unresolved.
+Early optics notes, plus the prototype parts locked in the mid-term bill of materials. Values marked `???` are still unresolved. The project front page is the [README](../README.md). Architecture is [02-system-architecture.md](02-system-architecture.md).
+
+## Prototype selected for the mid-term
+
+| Role | Part | Where it is written down |
+|------|------|---------------------------|
+| Vision computer | Raspberry Pi 5, 4 GB | [`hardware/BOM.csv`](../hardware/BOM.csv) |
+| Plate camera | Camera Module 3, 12 MP | BOM |
+| Gripper / QR camera | ESP32-CAM | BOM and [`esp_codes/esp_cam_codes/`](../esp_codes/esp_cam_codes/) |
+| Joints (SCARA draft) | 5× NEMA17, drivers, belts, limit switches | BOM |
+| Motion board | Arduino Nano + CNC shield | BOM. ESP32 is the control target in the deck. |
+| Gripper | Micro servo | BOM |
+| Carousel | High-torque servo, bearing, dish inserts | BOM |
+| Power envelope | ~95 W typical, ~145 W peak | [`hardware/power_budget.md`](../hardware/power_budget.md) |
+
+The revised deck replaces the custom SCARA with a procured 6-DOF arm. The BOM above is the SCARA shopping list and has not been rewritten for that arm.
 
 ## Petri dish storage
 
@@ -35,7 +50,7 @@ Candidate cameras:
 
 ## Lighting
 
-- **???** — type and placement not yet decided (diffused LED assumed per architecture diagram, see [System Architecture](02-system-architecture.md))
+- **???** — type and placement not yet decided. The mid-term deck assumes diffused light at a fixed working distance. See [System Architecture](02-system-architecture.md).
 
 ## Autofocus
 
@@ -47,6 +62,11 @@ Candidate cameras:
 - Temperature and humidity controlled
 - **Open question:** lens fogging risk inside a humidity-controlled chamber — not yet addressed
 
-## Images
+## Images already in the repo
 
-<!-- add reference photos / datasheets to ../assets and link here -->
+Plate and zone photos used on the project front page:
+
+- [`vision/sample/s1.png`](../vision/sample/s1.png) and [`s1_detected.png`](../vision/sample/s1_detected.png)
+- Disc-reading sequence: [`vision/antibiotic_vision/talk_pack/02_slides_images/pipeline/`](../vision/antibiotic_vision/talk_pack/02_slides_images/pipeline/)
+
+Pi camera frames at 20–45 cm (QR distance checks) are in [`camera/images/`](../camera/images/). No CAD render or chamber photo is checked in. The `assets/` folder is empty.

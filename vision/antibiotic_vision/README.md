@@ -2,7 +2,7 @@
 
 BTP vision work: read the printed **code + dose** on Kirby–Bauer discs from a plate photo.
 
-This folder is Manashvi’s `antibiotic_vision` tree (textbook PDF omitted — copyright).
+The project front page, with the plate photos and the 12/12 table, is the [repository README](../../README.md). This folder is the working tree (textbook PDF omitted — copyright).
 
 ## For a talk
 
