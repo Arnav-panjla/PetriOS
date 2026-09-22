@@ -1,0 +1,10 @@
+plate,disc,gt,raw,parsed,ok
+p01_five_discs,disc_03,E 15,AP 15,AP,0
+p01_five_discs,disc_04,VA 30,VA 30,VA 30,1
+p02_ctx_caz_cla,disc_02,CTX 30,CTX 33,CTX 33,0
+p02_ctx_caz_cla,disc_03,CAZ CLA,CAZ 100,CAZ 100,0
+p03_caz_ctx_cla_pair,disc_04,CTX 30,C TE 30,CTE 30,0
+p04_cfp_met_ipm_van,disc_02,MET 5,MET 5,MET 5,1
+p05_gen_rif_cot,disc_04,E 15,EV15,EV 15,0
+p07_mem10_x4,disc_02,MEM 10,MEM 10,MEM 10,1
+p07_mem10_x4,disc_03,MEM 10,MEM 109,MEM 109,0

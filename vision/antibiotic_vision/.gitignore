@@ -1,0 +1,7 @@
+.cursor/
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+Image Processing 4ed.pdf
