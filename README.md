@@ -9,14 +9,20 @@ Automated blood-test bot: a computer-vision pipeline + SCARA robot + climate-con
 ```
 PetriOS/
 ├── README.md
-├── research/       # specs, open questions, architecture notes (source of truth for now)
-└── assets/         # diagrams / reference images used in research docs
+├── research/                          # specs, architecture notes
+├── vision/
+│   ├── petri_detect.py                # dish / plate detection
+│   └── antibiotic_vision/             # disc stamp OCR (code + dose)
+├── camera/
+├── hardware/
+└── esp_codes/
 ```
 
 ## Research index
 
 - [Hardware Specs](research/01-hardware-specs.md) — camera, lens, lighting, autofocus, chamber requirements
 - [System Architecture](research/02-system-architecture.md) — imaging station, SCARA bot, storage chamber layout
+- [Disc stamp reading](vision/antibiotic_vision/README.md) — Kirby–Bauer code + dose pipeline, talk pack, process report
 
 ## System overview
 

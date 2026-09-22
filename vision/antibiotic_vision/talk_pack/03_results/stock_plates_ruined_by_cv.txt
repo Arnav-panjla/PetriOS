@@ -1,0 +1,20 @@
+plate disc label_before
+(real discs that Hough cropped, stamp readable on color crop, wrecked after CV)
+
+p01_five_discs disc_01  was GEN 10
+p01_five_discs disc_02  was LZ 30
+p01_five_discs disc_05  was COT 25
+p02_ctx_caz_cla disc_01  was CTX CLA
+p02_ctx_caz_cla disc_04  was CAZ 30
+p03_caz_ctx_cla_pair disc_03  was CAZ CLA
+p03_caz_ctx_cla_pair disc_06  was CAZ 30
+p04_cfp_met_ipm_van disc_01  was CFP 30
+p04_cfp_met_ipm_van disc_03  was IPM 10
+p04_cfp_met_ipm_van disc_04  was VAN 30
+p05_gen_rif_cot disc_02  was GEN 10
+p05_gen_rif_cot disc_03  was COT 25
+p05_gen_rif_cot disc_05  was VA 30
+p05_gen_rif_cot disc_06  was RIF 5
+p07_mem10_x4 disc_01  was MEM 10
+
+REMOVED: p06_seven_discs disc_08 (not a disc crop — tiny Hough hit on FOX lettering / table junk)

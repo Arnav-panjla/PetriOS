@@ -1,0 +1,40 @@
+plate,source,disc,flip,raw,parsed,crop
+p01_five_discs,images\test4.png,disc_01,0,TAB 10,TAB 10,selected_plates\p01_five_discs\crops\disc_01.png
+p01_five_discs,images\test4.png,disc_02,180,AM 80,AM 80,selected_plates\p01_five_discs\crops\disc_02.png
+p01_five_discs,images\test4.png,disc_03,0,AP 15,AP,selected_plates\p01_five_discs\crops\disc_03.png
+p01_five_discs,images\test4.png,disc_04,0,VA 30,VA 30,selected_plates\p01_five_discs\crops\disc_04.png
+p01_five_discs,images\test4.png,disc_05,0,TAB 22,TAB 22,selected_plates\p01_five_discs\crops\disc_05.png
+p02_ctx_caz_cla,images\test5.png,disc_01,0,AM 100,AM 100,selected_plates\p02_ctx_caz_cla\crops\disc_01.png
+p02_ctx_caz_cla,images\test5.png,disc_02,0,CTX 33,CTX 33,selected_plates\p02_ctx_caz_cla\crops\disc_02.png
+p02_ctx_caz_cla,images\test5.png,disc_03,0,CAZ 100,CAZ 100,selected_plates\p02_ctx_caz_cla\crops\disc_03.png
+p02_ctx_caz_cla,images\test5.png,disc_04,0,TAB 2,TAB,selected_plates\p02_ctx_caz_cla\crops\disc_04.png
+p03_caz_ctx_cla_pair,images\test7.png,disc_01,0,TAB 25,TAB,selected_plates\p03_caz_ctx_cla_pair\crops\disc_01.png
+p03_caz_ctx_cla_pair,images\test7.png,disc_02,0,TAB 25,TAB 25,selected_plates\p03_caz_ctx_cla_pair\crops\disc_02.png
+p03_caz_ctx_cla_pair,images\test7.png,disc_03,0,TAB 25,TAB 25,selected_plates\p03_caz_ctx_cla_pair\crops\disc_03.png
+p03_caz_ctx_cla_pair,images\test7.png,disc_04,0,C TE 30,CTE 30,selected_plates\p03_caz_ctx_cla_pair\crops\disc_04.png
+p03_caz_ctx_cla_pair,images\test7.png,disc_05,0,TAB 25,TAB 25,selected_plates\p03_caz_ctx_cla_pair\crops\disc_05.png
+p03_caz_ctx_cla_pair,images\test7.png,disc_06,0,GAZ 304,GAZ 304,selected_plates\p03_caz_ctx_cla_pair\crops\disc_06.png
+p03_caz_ctx_cla_pair,images\test7.png,disc_07,0,AM 250,AM 250,selected_plates\p03_caz_ctx_cla_pair\crops\disc_07.png
+p04_cfp_met_ipm_van,images\test8.png,disc_01,0,TAB 25,TAB,selected_plates\p04_cfp_met_ipm_van\crops\disc_01.png
+p04_cfp_met_ipm_van,images\test8.png,disc_02,0,MET 5,MET 5,selected_plates\p04_cfp_met_ipm_van\crops\disc_02.png
+p04_cfp_met_ipm_van,images\test8.png,disc_03,0,AM 500,AM 500,selected_plates\p04_cfp_met_ipm_van\crops\disc_03.png
+p04_cfp_met_ipm_van,images\test8.png,disc_04,0,AB 125,AB 125,selected_plates\p04_cfp_met_ipm_van\crops\disc_04.png
+p05_gen_rif_cot,images\test9.png,disc_01,0,AB 123,AB 123,selected_plates\p05_gen_rif_cot\crops\disc_01.png
+p05_gen_rif_cot,images\test9.png,disc_02,0,C10,,selected_plates\p05_gen_rif_cot\crops\disc_02.png
+p05_gen_rif_cot,images\test9.png,disc_03,0,TAB 2,TAB 2,selected_plates\p05_gen_rif_cot\crops\disc_03.png
+p05_gen_rif_cot,images\test9.png,disc_04,0,EV15,EV 15,selected_plates\p05_gen_rif_cot\crops\disc_04.png
+p05_gen_rif_cot,images\test9.png,disc_05,0,250,,selected_plates\p05_gen_rif_cot\crops\disc_05.png
+p05_gen_rif_cot,images\test9.png,disc_06,0,PBS 5,PBS 5,selected_plates\p05_gen_rif_cot\crops\disc_06.png
+p06_seven_discs,images\test2.png,disc_01,0,TAB 25,TAB 25,selected_plates\p06_seven_discs\crops\disc_01.png
+p06_seven_discs,images\test2.png,disc_02,0,TAB 25,TAB 25,selected_plates\p06_seven_discs\crops\disc_02.png
+p06_seven_discs,images\test2.png,disc_03,0,AM 500,AM 500,selected_plates\p06_seven_discs\crops\disc_03.png
+p06_seven_discs,images\test2.png,disc_04,0,TAB 2,TAB 2,selected_plates\p06_seven_discs\crops\disc_04.png
+p06_seven_discs,images\test2.png,disc_05,0,AM 500,AM,selected_plates\p06_seven_discs\crops\disc_05.png
+p06_seven_discs,images\test2.png,disc_06,0,TAB 25,TAB,selected_plates\p06_seven_discs\crops\disc_06.png
+p06_seven_discs,images\test2.png,disc_07,0,AB 125,AB 125,selected_plates\p06_seven_discs\crops\disc_07.png
+p06_seven_discs,images\test2.png,disc_08,0,TAB 24,TAB,selected_plates\p06_seven_discs\crops\disc_08.png
+p07_mem10_x4,images\image (13).png,disc_01,0,ZEL 100,ZEL 100,selected_plates\p07_mem10_x4\crops\disc_01.png
+p07_mem10_x4,images\image (13).png,disc_02,180,MEM 10,MEM 10,selected_plates\p07_mem10_x4\crops\disc_02.png
+p07_mem10_x4,images\image (13).png,disc_03,0,MEM 109,MEM 109,selected_plates\p07_mem10_x4\crops\disc_03.png
+p07_mem10_x4,images\image (13).png,disc_04,0,TAB 25,TAB,selected_plates\p07_mem10_x4\crops\disc_04.png
+p07_mem10_x4,images\image (13).png,disc_05,0,AM 250,AM,selected_plates\p07_mem10_x4\crops\disc_05.png

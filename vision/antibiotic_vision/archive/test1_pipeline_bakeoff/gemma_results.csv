@@ -1,0 +1,157 @@
+stem,pipeline,raw,parsed,gt,ok
+disc_01,P0_rim,IPM 10,IPM 10,IPM 10,1
+disc_01,P1_open,IPM 10,IPM 10,IPM 10,1
+disc_01,P2_med_open,IPM 10,IPM 10,IPM 10,1
+disc_01,P3_med_gauss_otsu,IPM 10,IPM 10,IPM 10,1
+disc_01,P4_med_gauss_otsu_open,IPM 10,IPM 10,IPM 10,1
+disc_01,P5_med_gauss_unsharp_otsu_open,IPM 10,IPM 10,IPM 10,1
+disc_01,P6_med_gauss_highboost_otsu_open,IPM 10,IPM 10,IPM 10,1
+disc_01,P7_med_gauss_otsu_close_open_erode,IPM 10,IPM 10,IPM 10,1
+disc_01,P8_med_gauss_otsu_open_close,IPM 10,IPM 10,IPM 10,1
+disc_01,P9_med_gauss_lap_stretch_otsu_open,IPM 10,IPM 10,IPM 10,1
+disc_01,P10_med_clahe_gauss_otsu_open,IPM 10,IPM 10,IPM 10,1
+disc_01,P11_med_box_gauss_otsu_open_erode,IPM 10,IPM 10,IPM 10,1
+disc_01,P12_gauss_med_gauss_otsu_open_erode,IPM 10,IPM 10,IPM 10,1
+disc_02,P0_rim,TZP 110,TZP 110,TZP 110,1
+disc_02,P1_open,TZP 110,TZP 110,TZP 110,1
+disc_02,P2_med_open,TZP 110,TZP 110,TZP 110,1
+disc_02,P3_med_gauss_otsu,TZP 110,TZP 110,TZP 110,1
+disc_02,P4_med_gauss_otsu_open,TZP 110,TZP 110,TZP 110,1
+disc_02,P5_med_gauss_unsharp_otsu_open,TZP 110,TZP 110,TZP 110,1
+disc_02,P6_med_gauss_highboost_otsu_open,TZP 110,TZP 110,TZP 110,1
+disc_02,P7_med_gauss_otsu_close_open_erode,TZP 110,TZP 110,TZP 110,1
+disc_02,P8_med_gauss_otsu_open_close,TZP 110,TZP 110,TZP 110,1
+disc_02,P9_med_gauss_lap_stretch_otsu_open,TZP 110,TZP 110,TZP 110,1
+disc_02,P10_med_clahe_gauss_otsu_open,TZP 110,TZP 110,TZP 110,1
+disc_02,P11_med_box_gauss_otsu_open_erode,TZP 110,TZP 110,TZP 110,1
+disc_02,P12_gauss_med_gauss_otsu_open_erode,TZP 110,TZP 110,TZP 110,1
+disc_03,P0_rim,GM 10,GM 10,GM 10,1
+disc_03,P1_open,GM10,GM 10,GM 10,1
+disc_03,P2_med_open,GM 10,GM 10,GM 10,1
+disc_03,P3_med_gauss_otsu,GM 10,GM 10,GM 10,1
+disc_03,P4_med_gauss_otsu_open,GM 10,GM 10,GM 10,1
+disc_03,P5_med_gauss_unsharp_otsu_open,GM 10,GM 10,GM 10,1
+disc_03,P6_med_gauss_highboost_otsu_open,GM 10,GM 10,GM 10,1
+disc_03,P7_med_gauss_otsu_close_open_erode,GM 10,GM 10,GM 10,1
+disc_03,P8_med_gauss_otsu_open_close,GM 10,GM 10,GM 10,1
+disc_03,P9_med_gauss_lap_stretch_otsu_open,GM 10,GM 10,GM 10,1
+disc_03,P10_med_clahe_gauss_otsu_open,GM 10,GM 10,GM 10,1
+disc_03,P11_med_box_gauss_otsu_open_erode,GM 10,GM 10,GM 10,1
+disc_03,P12_gauss_med_gauss_otsu_open_erode,GM 10,GM 10,GM 10,1
+disc_04,P0_rim,MEM 10,MEM 10,MEM 10,1
+disc_04,P1_open,MEM 10,MEM 10,MEM 10,1
+disc_04,P2_med_open,MEM 10,MEM 10,MEM 10,1
+disc_04,P3_med_gauss_otsu,MEM 10,MEM 10,MEM 10,1
+disc_04,P4_med_gauss_otsu_open,MEM 10,MEM 10,MEM 10,1
+disc_04,P5_med_gauss_unsharp_otsu_open,MEM 10,MEM 10,MEM 10,1
+disc_04,P6_med_gauss_highboost_otsu_open,MEM 10,MEM 10,MEM 10,1
+disc_04,P7_med_gauss_otsu_close_open_erode,MEM 10,MEM 10,MEM 10,1
+disc_04,P8_med_gauss_otsu_open_close,MEM 10,MEM 10,MEM 10,1
+disc_04,P9_med_gauss_lap_stretch_otsu_open,MEM 10,MEM 10,MEM 10,1
+disc_04,P10_med_clahe_gauss_otsu_open,MEM 10,MEM 10,MEM 10,1
+disc_04,P11_med_box_gauss_otsu_open_erode,MEM 10,MEM 10,MEM 10,1
+disc_04,P12_gauss_med_gauss_otsu_open_erode,MEM 10,MEM 10,MEM 10,1
+disc_05,P0_rim,AN 30,AN 30,AN 30,1
+disc_05,P1_open,AN30,AN 30,AN 30,1
+disc_05,P2_med_open,AN30,AN 30,AN 30,1
+disc_05,P3_med_gauss_otsu,AN30,AN 30,AN 30,1
+disc_05,P4_med_gauss_otsu_open,AN30,AN 30,AN 30,1
+disc_05,P5_med_gauss_unsharp_otsu_open,AN30,AN 30,AN 30,1
+disc_05,P6_med_gauss_highboost_otsu_open,AN30,AN 30,AN 30,1
+disc_05,P7_med_gauss_otsu_close_open_erode,AN30,AN 30,AN 30,1
+disc_05,P8_med_gauss_otsu_open_close,AN30,AN 30,AN 30,1
+disc_05,P9_med_gauss_lap_stretch_otsu_open,AN30,AN 30,AN 30,1
+disc_05,P10_med_clahe_gauss_otsu_open,AN30,AN 30,AN 30,1
+disc_05,P11_med_box_gauss_otsu_open_erode,AN30,AN 30,AN 30,1
+disc_05,P12_gauss_med_gauss_otsu_open_erode,AN30,AN 30,AN 30,1
+disc_06,P0_rim,CAZ 30,CAZ 30,CAZ 30,1
+disc_06,P1_open,CAZ30,CAZ 30,CAZ 30,1
+disc_06,P2_med_open,CAZ 30,CAZ 30,CAZ 30,1
+disc_06,P3_med_gauss_otsu,CAZ30,CAZ 30,CAZ 30,1
+disc_06,P4_med_gauss_otsu_open,CAZ30,CAZ 30,CAZ 30,1
+disc_06,P5_med_gauss_unsharp_otsu_open,CAZ30,CAZ 30,CAZ 30,1
+disc_06,P6_med_gauss_highboost_otsu_open,CAZ 30,CAZ 30,CAZ 30,1
+disc_06,P7_med_gauss_otsu_close_open_erode,CAZ 30,CAZ 30,CAZ 30,1
+disc_06,P8_med_gauss_otsu_open_close,CAZ30,CAZ 30,CAZ 30,1
+disc_06,P9_med_gauss_lap_stretch_otsu_open,CAZ 30,CAZ 30,CAZ 30,1
+disc_06,P10_med_clahe_gauss_otsu_open,CAZ30,CAZ 30,CAZ 30,1
+disc_06,P11_med_box_gauss_otsu_open_erode,CAZ 30,CAZ 30,CAZ 30,1
+disc_06,P12_gauss_med_gauss_otsu_open_erode,CAZ 30,CAZ 30,CAZ 30,1
+disc_07,P0_rim,SXT 25,SXT 25,SXT,0
+disc_07,P1_open,SXT 25,SXT 25,SXT,0
+disc_07,P2_med_open,SXT 25,SXT 25,SXT,0
+disc_07,P3_med_gauss_otsu,SXT 625,SXT 625,SXT,0
+disc_07,P4_med_gauss_otsu_open,SXT 25,SXT 25,SXT,0
+disc_07,P5_med_gauss_unsharp_otsu_open,SXT 25,SXT 25,SXT,0
+disc_07,P6_med_gauss_highboost_otsu_open,SXT 25,SXT 25,SXT,0
+disc_07,P7_med_gauss_otsu_close_open_erode,SXT 500,SXT 500,SXT,0
+disc_07,P8_med_gauss_otsu_open_close,SXT 25,SXT 25,SXT,0
+disc_07,P9_med_gauss_lap_stretch_otsu_open,SXT 25,SXT 25,SXT,0
+disc_07,P10_med_clahe_gauss_otsu_open,SXT 25,SXT 25,SXT,0
+disc_07,P11_med_box_gauss_otsu_open_erode,SXT 123,SXT 123,SXT,0
+disc_07,P12_gauss_med_gauss_otsu_open_erode,SXT 125,SXT 125,SXT,0
+disc_08,P0_rim,NN 10,NN 10,NN 10,1
+disc_08,P1_open,NN 10,NN 10,NN 10,1
+disc_08,P2_med_open,NN 10,NN 10,NN 10,1
+disc_08,P3_med_gauss_otsu,NN 10,NN 10,NN 10,1
+disc_08,P4_med_gauss_otsu_open,NN 10,NN 10,NN 10,1
+disc_08,P5_med_gauss_unsharp_otsu_open,NN 10,NN 10,NN 10,1
+disc_08,P6_med_gauss_highboost_otsu_open,NN 10,NN 10,NN 10,1
+disc_08,P7_med_gauss_otsu_close_open_erode,NN 10,NN 10,NN 10,1
+disc_08,P8_med_gauss_otsu_open_close,NN 10,NN 10,NN 10,1
+disc_08,P9_med_gauss_lap_stretch_otsu_open,NN 10,NN 10,NN 10,1
+disc_08,P10_med_clahe_gauss_otsu_open,NN 10,NN 10,NN 10,1
+disc_08,P11_med_box_gauss_otsu_open_erode,NN 10,NN 10,NN 10,1
+disc_08,P12_gauss_med_gauss_otsu_open_erode,NN 10,NN 10,NN 10,1
+disc_09,P0_rim,AM 10,AM 10,AM 10,1
+disc_09,P1_open,AM 10,AM 10,AM 10,1
+disc_09,P2_med_open,AM 10,AM 10,AM 10,1
+disc_09,P3_med_gauss_otsu,AM10,AM 10,AM 10,1
+disc_09,P4_med_gauss_otsu_open,AM 10,AM 10,AM 10,1
+disc_09,P5_med_gauss_unsharp_otsu_open,AM 10,AM 10,AM 10,1
+disc_09,P6_med_gauss_highboost_otsu_open,AM 10,AM 10,AM 10,1
+disc_09,P7_med_gauss_otsu_close_open_erode,AM 10,AM 10,AM 10,1
+disc_09,P8_med_gauss_otsu_open_close,AM 10,AM 10,AM 10,1
+disc_09,P9_med_gauss_lap_stretch_otsu_open,AM 10,AM 10,AM 10,1
+disc_09,P10_med_clahe_gauss_otsu_open,AM 10,AM 10,AM 10,1
+disc_09,P11_med_box_gauss_otsu_open_erode,AM10,AM 10,AM 10,1
+disc_09,P12_gauss_med_gauss_otsu_open_erode,AM 10,AM 10,AM 10,1
+disc_10,P0_rim,30,30,CRO 30,0
+disc_10,P1_open,30,30,CRO 30,0
+disc_10,P2_med_open,30,30,CRO 30,0
+disc_10,P3_med_gauss_otsu,30,30,CRO 30,0
+disc_10,P4_med_gauss_otsu_open,30,30,CRO 30,0
+disc_10,P5_med_gauss_unsharp_otsu_open,30,30,CRO 30,0
+disc_10,P6_med_gauss_highboost_otsu_open,30,30,CRO 30,0
+disc_10,P7_med_gauss_otsu_close_open_erode,30,30,CRO 30,0
+disc_10,P8_med_gauss_otsu_open_close,30,30,CRO 30,0
+disc_10,P9_med_gauss_lap_stretch_otsu_open,30,30,CRO 30,0
+disc_10,P10_med_clahe_gauss_otsu_open,30,30,CRO 30,0
+disc_10,P11_med_box_gauss_otsu_open_erode,30,30,CRO 30,0
+disc_10,P12_gauss_med_gauss_otsu_open_erode,30,30,CRO 30,0
+disc_11,P0_rim,CZ30,CZ 30,CZ 30,1
+disc_11,P1_open,CZ30,CZ 30,CZ 30,1
+disc_11,P2_med_open,CZ30,CZ 30,CZ 30,1
+disc_11,P3_med_gauss_otsu,CZ30,CZ 30,CZ 30,1
+disc_11,P4_med_gauss_otsu_open,CZ30,CZ 30,CZ 30,1
+disc_11,P5_med_gauss_unsharp_otsu_open,CZ30,CZ 30,CZ 30,1
+disc_11,P6_med_gauss_highboost_otsu_open,CZ30,CZ 30,CZ 30,1
+disc_11,P7_med_gauss_otsu_close_open_erode,CZ30,CZ 30,CZ 30,1
+disc_11,P8_med_gauss_otsu_open_close,CZ30,CZ 30,CZ 30,1
+disc_11,P9_med_gauss_lap_stretch_otsu_open,CZ30,CZ 30,CZ 30,1
+disc_11,P10_med_clahe_gauss_otsu_open,CZ30,CZ 30,CZ 30,1
+disc_11,P11_med_box_gauss_otsu_open_erode,CZ30,CZ 30,CZ 30,1
+disc_11,P12_gauss_med_gauss_otsu_open_erode,CZ30,CZ 30,CZ 30,1
+disc_12,P0_rim,CIP 5,CIP 5,CIP 5,1
+disc_12,P1_open,CIP 5,CIP 5,CIP 5,1
+disc_12,P2_med_open,CIP 5,CIP 5,CIP 5,1
+disc_12,P3_med_gauss_otsu,CIP 5,CIP 5,CIP 5,1
+disc_12,P4_med_gauss_otsu_open,CIP 5,CIP 5,CIP 5,1
+disc_12,P5_med_gauss_unsharp_otsu_open,CIP 5,CIP 5,CIP 5,1
+disc_12,P6_med_gauss_highboost_otsu_open,CIP 5,CIP 5,CIP 5,1
+disc_12,P7_med_gauss_otsu_close_open_erode,CIP5,CIP 5,CIP 5,1
+disc_12,P8_med_gauss_otsu_open_close,CIP 5,CIP 5,CIP 5,1
+disc_12,P9_med_gauss_lap_stretch_otsu_open,CIP5,CIP 5,CIP 5,1
+disc_12,P10_med_clahe_gauss_otsu_open,CIP 5,CIP 5,CIP 5,1
+disc_12,P11_med_box_gauss_otsu_open_erode,CIP 5,CIP 5,CIP 5,1
+disc_12,P12_gauss_med_gauss_otsu_open_erode,CIP 5,CIP 5,CIP 5,1

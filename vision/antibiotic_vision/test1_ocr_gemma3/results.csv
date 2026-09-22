@@ -1,0 +1,13 @@
+stem,file,path,hausdorff,mean_d,n_glyphs,unsure,ok,truth,gemma_raw,gemma,final,source
+disc_01,disc_01_out_0.png,test1_letters_above\disc_01_out_0.png,IPH 78,0.9099172116362603,5,False,True,IPM 10,IPM 10,IPM 10,IPM 10,gemma
+disc_02,disc_02_out_0.png,test1_letters_above\disc_02_out_0.png,TZP 7117,1.15995878433741,7,True,True,TZP 110,TZP 110,TZP 110,TZP 110,gemma
+disc_03,disc_03_out_0.png,test1_letters_above\disc_03_out_0.png,WA 78,1.2899718739812462,4,False,True,GM 10,GM10,GM 10,GM 10,gemma
+disc_04,disc_04_out_180.png,test1_letters_above\disc_04_out_180.png,WEW 78,1.037386608670672,5,False,True,MEM 10,MEM 10,MEM 10,MEM 10,gemma
+disc_05,disc_05_out_180.png,test1_letters_above\disc_05_out_180.png,W 0,1.5964585193213745,2,True,True,AN 30,AN30,AN 30,AN 30,gemma
+disc_06,disc_06_out_180.png,test1_letters_above\disc_06_out_180.png,W 0,1.7130115208903296,2,True,True,CAZ 30,CAZ30,CAZ 30,CAZ 30,gemma
+disc_07,disc_07_out_0.png,test1_letters_above\disc_07_out_0.png,GIWFQ 807,1.1340067447868314,8,True,True,SXT,SXT 120,SXT,SXT,gemma
+disc_08,disc_08_out_180.png,test1_letters_above\disc_08_out_180.png,HH 15,1.0818972669807043,4,False,True,NN 10,NN 10,NN 10,NN 10,gemma
+disc_09,disc_09_out_0.png,test1_letters_above\disc_09_out_0.png,W 75,1.2924190027215472,3,True,True,AM 10,AM 10,AM 10,AM 10,gemma
+disc_10,disc_10_out_0.png,test1_letters_above\disc_10_out_0.png,CW 0,1.3217486333480146,3,False,True,CRO 30,CRO 30,CRO 30,CRO 30,gemma
+disc_11,disc_11_out_0.png,test1_letters_above\disc_11_out_0.png,IIIIQI 0,0.9175903772247587,7,True,True,CZ 30,CZ30,CZ 30,CZ 30,gemma
+disc_12,disc_12_out_0.png,test1_letters_above\disc_12_out_0.png,CIP 5,0.7049370861117745,4,False,True,CIP 5,CIP 5,CIP 5,CIP 5,gemma

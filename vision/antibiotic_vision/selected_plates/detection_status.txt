@@ -1,0 +1,57 @@
+Hough detection on selected_plates (corrected 7 Sep 2026)
+Proper = green circle on a real paper disc at roughly disc scale.
+Not OCR. Not "stamp survived processing".
+
+p01_five_discs (test4)  5 real, 5 proper, 0 false, 0 missed
+  1 GEN 10   proper
+  2 LZ 30    proper
+  3 E 15     proper
+  4 VA 30    proper
+  5 COT 25   proper
+
+p02_ctx_caz_cla (test5)  4 real, 4 proper, 0 false, 0 missed
+  1 CTX CLA  proper
+  2 CTX 30   proper
+  3 CAZ CLA  proper
+  4 CAZ 30   proper
+
+p03_caz_ctx_cla_pair (test7)  4 real, 4 proper, 3 false (rim), 0 missed
+  1 rim      FALSE
+  2 rim      FALSE
+  3 CAZ CLA  proper
+  4 CTX 30   proper
+  5 CAZ CLA  proper
+  6 CAZ 30   proper
+  7 rim      FALSE
+
+p04_cfp_met_ipm_van (test8)  4 real, 4 proper, 0 false, 0 missed
+  1 CFP 30   proper
+  2 MET 5    proper
+  3 IPM 10   proper
+  4 VAN 30   proper
+
+p05_gen_rif_cot (test9)  5 real, 5 proper, 1 false (rim), 0 missed
+  1 rim      FALSE
+  2 GEN 10   proper
+  3 COT 25   proper
+  4 E 15     proper
+  5 VA 30    proper
+  6 RIF 5    proper
+
+p06_seven_discs (test2)  7 real, 0 proper, 8 false, 7 missed
+  1-7 table specks / white junk   FALSE
+  8 tiny hit on FOX lettering     FALSE (not a disc circle)
+  missed: AMS 10/10, TS 25, CIP 5, FT 300, CZ 30, AM 10, FOX 30
+
+p07_mem10_x4 (image 13)  4 real, 3 proper, 2 false (rim), 1 missed
+  1 MEM 10   proper
+  2 MEM 10   proper
+  3 MEM 10   proper
+  4 rim glare FALSE
+  5 rim glare FALSE
+  missed: bottom-right MEM 10 (large inhibition zone)
+
+TOTALS  33 real discs
+  proper  25
+  missed   8
+  false   14

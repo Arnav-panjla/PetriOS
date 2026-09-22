@@ -1,0 +1,36 @@
+file,label,tier,label_certain,source_plate
+test2_d01.png,TS 25,clear,0,test2.png
+test2_d02.png,CIP 5,clear,1,test2.png
+test2_d03.png,FOX 30,clear,1,test2.png
+test2_d04.png,CZ 30,clear,1,test2.png
+test4_d01.png,GEN 10,clear,1,test4.png
+test4_d03.png,E 15,clear,1,test4.png
+test5_d03.png,CTX 30,clear,1,test5.png
+test5_d05.png,CAZ CLA,clear,0,test5.png
+test6_d04.png,CTX 30,clear,0,test6.png
+test7_d05.png,CAZ CLA,clear,0,test7.png
+test8_d03.png,MET 5,clear,1,test8.png
+test9_d01.png,GEN 10,clear,1,test9.png
+test9_d02.png,TOB 10,clear,0,test9.png
+test9_d03.png,E 15,clear,1,test9.png
+test9_d04.png,KA 30,clear,0,test9.png
+test9_d05.png,RIF 5,clear,0,test9.png
+test_d01.png,IPM 10,clear,1,test.jpg
+test_d02.png,TZP 110,clear,1,test.jpg
+test_d03.png,GM 10,clear,1,test.jpg
+test_d04.png,MEM 10,clear,1,test.jpg
+test_d05.png,AN 30,clear,1,test.jpg
+test_d06.png,CAZ 30,clear,1,test.jpg
+test_d07.png,SXT,clear,1,test.jpg
+test_d08.png,NN 10,clear,1,test.jpg
+test_d09.png,AM 10,clear,1,test.jpg
+test_d10.png,CRO 30,clear,1,test.jpg
+test_d11.png,CIP 5,clear,1,test.jpg
+test_d12.png,CZ 30,clear,1,test.jpg
+test4_d02.png,LZ 30,marginal,0,test4.png
+test4_d04.png,100 25,marginal,0,test4.png
+test5_d04.png,CAZ 30,marginal,0,test5.png
+test6_d02.png,CAZ CLA,marginal,0,test6.png
+test7_d04.png,CTX 30,marginal,0,test7.png
+test8_d01.png,CIP 30,marginal,0,test8.png
+test8_d04.png,VAN 30,marginal,0,test8.png
