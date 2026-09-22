@@ -91,6 +91,46 @@ The arm beside the dish carousel, at **2×** (source clip 2:08, this copy 1:04).
 
 Details: [system architecture](research/02-system-architecture.md).
 
+## Hardware — mechanical iterations
+
+Three designs, in order tried.
+
+| Iteration | Approach | Result |
+|-----------|----------|--------|
+| I | 3D-printer-style XY gantry | Rejected. Whole frame moved as one block, so the gripper couldn't reach every carousel slot, and rails sized to the full base footprint wasted material. |
+| II | SCARA arm | Range of motion was enough to reach everywhere, but the control math is more coupled than simple XY, and every link had to be designed and 3D-printed from zero — too slow to build. |
+| Final | Ready-made industrial 6-DOF arm | Needs 2–3 joints/links extended and a wider base to clear the carousel. Far less design and print risk than a from-scratch arm. |
+
+<p align="center">
+  <img src="assets/hardware/iteration1_gantry.png" width="46%" alt="Iteration I: 3D-printer-style XY gantry frame">
+  &nbsp;
+  <img src="assets/hardware/iteration2_scara.png" width="46%" alt="Iteration II: SCARA arm">
+</p>
+
+<p align="center">
+  <img src="assets/hardware/final_cad_render.png" width="70%" alt="Final layout: 6-DOF arm, dual dish carousels, imaging station">
+</p>
+
+<p align="center"><i>Final layout. Frame, two dish carousels, imaging/staging table, control box, base plate.</i></p>
+
+<p align="center">
+  <img src="assets/hardware/arm_elevation.png" width="46%" alt="6-DOF arm elevation, reach check against the carousel">
+  &nbsp;
+  <img src="assets/hardware/full_cad_dimensioned.png" width="46%" alt="Full assembly, dimensioned, 650 x 800 x 525 mm envelope">
+</p>
+
+The dimensioned front view of the current frame (650 × 535 × 275 × 382.5 mm) is in [`assets/hardware/system_elevation_dimensioned.png`](assets/hardware/system_elevation_dimensioned.png). Still open: the drawing for the modified arm itself — the 2 lengthened base-side links and the wider base, with full dimensions. That drawing is not made yet.
+
+### Compute platform
+
+Raspberry Pi went through two OS installs before settling:
+
+1. **Ubuntu Server** — first OS. Chosen because ROS 2 installs and packages more easily on Ubuntu.
+2. **Camera test** — Camera Module verified working under Ubuntu Server.
+3. **Raspberry Pi OS** — final OS. The add-on HAT board only ships drivers for Raspberry Pi OS, not Ubuntu, so the deployed board runs Raspberry Pi OS.
+
+Full slide version: [`PPTs/Hardware_CAD_Midterm_2026.pptx`](PPTs/Hardware_CAD_Midterm_2026.pptx).
+
 ## Vision
 
 Image processing is two separate jobs. Zone measurement does not read the stamp, and stamp reading does not measure the zone.
@@ -180,46 +220,6 @@ What else was scored on `test1.png`, so the 12/12 has a denominator:
 | Hough on other stock plates | 25 proper circles / 33 real discs |
 
 An earlier 12/12 used a different set of tiny grey crops and a 15° EasyOCR search. That recipe did not transfer to these 1-bit stamps. The two scores are different experiments. Hough radii are tuned to `test1.png`; on other photographs the miss is the detector. There is no single `run_plate.py` yet. The full narrative is [`vision/antibiotic_vision/PROCESS_REPORT.md`](vision/antibiotic_vision/PROCESS_REPORT.md). Slide images live in [`vision/antibiotic_vision/talk_pack/`](vision/antibiotic_vision/talk_pack/).
-
-## Hardware — mechanical iterations
-
-Three designs, in order tried.
-
-| Iteration | Approach | Result |
-|-----------|----------|--------|
-| I | 3D-printer-style XY gantry | Rejected. Whole frame moved as one block, so the gripper couldn't reach every carousel slot, and rails sized to the full base footprint wasted material. |
-| II | SCARA arm | Range of motion was enough to reach everywhere, but the control math is more coupled than simple XY, and every link had to be designed and 3D-printed from zero — too slow to build. |
-| Final | Ready-made industrial 6-DOF arm | Needs 2–3 joints/links extended and a wider base to clear the carousel. Far less design and print risk than a from-scratch arm. |
-
-<p align="center">
-  <img src="assets/hardware/iteration1_gantry.png" width="46%" alt="Iteration I: 3D-printer-style XY gantry frame">
-  &nbsp;
-  <img src="assets/hardware/iteration2_scara.png" width="46%" alt="Iteration II: SCARA arm">
-</p>
-
-<p align="center">
-  <img src="assets/hardware/final_cad_render.png" width="70%" alt="Final layout: 6-DOF arm, dual dish carousels, imaging station">
-</p>
-
-<p align="center"><i>Final layout. Frame, two dish carousels, imaging/staging table, control box, base plate.</i></p>
-
-<p align="center">
-  <img src="assets/hardware/arm_elevation.png" width="46%" alt="6-DOF arm elevation, reach check against the carousel">
-  &nbsp;
-  <img src="assets/hardware/full_cad_dimensioned.png" width="46%" alt="Full assembly, dimensioned, 650 x 800 x 525 mm envelope">
-</p>
-
-The dimensioned front view of the current frame (650 × 535 × 275 × 382.5 mm) is in [`assets/hardware/system_elevation_dimensioned.png`](assets/hardware/system_elevation_dimensioned.png). Still open: the drawing for the modified arm itself — the 2 lengthened base-side links and the wider base, with full dimensions. That drawing is not made yet.
-
-### Compute platform
-
-Raspberry Pi went through two OS installs before settling:
-
-1. **Ubuntu Server** — first OS. Chosen because ROS 2 installs and packages more easily on Ubuntu.
-2. **Camera test** — Camera Module verified working under Ubuntu Server.
-3. **Raspberry Pi OS** — final OS. The add-on HAT board only ships drivers for Raspberry Pi OS, not Ubuntu, so the deployed board runs Raspberry Pi OS.
-
-Full slide version: [`PPTs/Hardware_CAD_Midterm_2026.pptx`](PPTs/Hardware_CAD_Midterm_2026.pptx).
 
 ## Hardware draft
 
