@@ -7,91 +7,29 @@ PetriOS automates the repetitive laboratory half of antimicrobial-resistance sur
 ELD411 mid-term review, 2026 · Indian Institute of Technology Delhi  
 Arnav Panjla · 2023EE10978 · Manashvi Garg · 2023EE1141
 
+## Hardware, CAD, and simulation
+
+Final layout is a ready-made 6-DOF arm beside two dish carousels and an imaging station. The arm replaces the earlier SCARA. Two or three joints still need lengthening, and the base needs to be wider, so the gripper clears the carousel.
+
 <p align="center">
-  <img src="vision/sample/s1.png" width="46%" alt="Kirby-Bauer plate before detection">
-  &nbsp;
-  <img src="vision/sample/s1_detected.png" width="46%" alt="Same plate with dish, discs, and inhibition zones marked">
+  <img src="assets/hardware/final_cad_render.png" width="78%" alt="Final layout: 6-DOF arm, dual dish carousels, imaging station">
 </p>
 
-<p align="center"><i>OpenCV baseline on a 90 mm plate. Blue is the dish (R = 45 mm). Red is a disc. Purple is a measured zone. The blank control has no zone, which is a result.</i></p>
+<p align="center"><i>Frame, two dish carousels, imaging/staging table, control box, base plate.</i></p>
 
-## The bottleneck
-
-Village sampling feeds a central lab. The lab work that does not scale is moving dishes, imaging them, and logging what was on the plate.
-
-| Step | What happens today |
-|------|--------------------|
-| Villages | Distributed sampling |
-| Collection | Repeated field visits |
-| Laboratory | Central processing |
-| Dishes | Manual handling and imaging |
-| Bottleneck | The same motions, every dish |
-
-The objective is autonomous Petri-dish handling plus controlled imaging, at about **100 dishes per day**.
-
-## Design load
-
-These are planning numbers for storage and robot duty cycle. The 2–5% sampling fraction is a project assumption, not an epidemiological estimate.
-
-| Input | Value |
-|-------|--------|
-| Village size | ~100 people |
-| Sampling fraction | 2–5% → 2–5 samples per village |
-| Field collectors | 4–5 |
-| Villages per collector per day | 5–6 |
-| Incoming dishes | **~100 / day** |
-| Time a dish stays in process | 5–6 days |
-| In-process capacity | **~500–600 dishes** |
-
-Day 1 holds 100 dishes. By day 6 the pipeline is holding about 600, because earlier batches are still incubating.
-
-## System
-
-Perception and motion are split. The Pi decides what and where. A real-time controller decides when and how.
-
-```mermaid
-flowchart LR
-  queue["Dish queue"] --> pi["Raspberry Pi 5<br/>vision, localization, planning"]
-  pi --> esp["ESP32<br/>motor timing and I/O"]
-  esp --> arm["Manipulator<br/>and gripper"]
-  arm --> out["Imaging station<br/>and storage"]
-  pi --> cam["Plate camera<br/>zones and disc codes"]
-  arm --> grip["Gripper camera<br/>QR and pick alignment"]
-```
-
-| Layer | Hardware | Job |
-|-------|----------|-----|
-| Computation | Raspberry Pi 5 | Computer vision, planning, camera interface |
-| Control | ESP32 (Zephyr is the integration target; current code is Arduino) | Motor timing, limit inputs, command execution |
-| Actuation | Drivers, motors, manipulator, gripper | Pick, transfer, place |
-| Imaging | 12 MP Camera Module 3, diffused light | Plate capture |
-| Identity | ESP32-CAM on the gripper | QR or barcode before pickup |
-| Storage | Carousel or chamber | Queue of dishes under controlled conditions |
-
-Pick-and-place closes the loop after the grip, not only before it:
-
-1. Capture
-2. Detect the dish
-3. Localize `x, y, θ`
-4. Transform camera coordinates into the robot frame
-5. Plan a collision-aware path
-6. Approach
-7. Grip and confirm the hold
-8. Transfer
-9. Release
-10. Verify, then retry or escalate
-
-The revised mid-term deck moves the arm from the original SCARA bill of materials to a **6-DOF arm** with longer links for carousel reach, a rigid camera mount above the gripper, and cable routing for CSI and power. Torque, stiffness, and collisions still have to be rechecked after the link change.
-
-### Gazebo
-
-The arm beside the dish carousel, at **2×** (source clip 2:08, this copy 1:04). GitHub plays the GIF inline. The full-resolution file is [`assets/gazebo-sim-2x.mp4`](assets/gazebo-sim-2x.mp4). The URDF and world file are not checked in yet.
+Gazebo clip of the arm beside the dish carousel, at **2×** (source clip 2:08, this copy 1:04). GitHub plays the GIF inline. Full-resolution file: [`assets/gazebo-sim-2x.mp4`](assets/gazebo-sim-2x.mp4). The URDF and world file are not checked in yet.
 
 ![Gazebo simulation of the arm and dish carousel, played at 2x](assets/gazebo-sim-2x.gif)
 
-Details: [system architecture](research/02-system-architecture.md).
+<p align="center">
+  <img src="assets/hardware/arm_elevation.png" width="46%" alt="6-DOF arm elevation, reach check against the carousel">
+  &nbsp;
+  <img src="assets/hardware/full_cad_dimensioned.png" width="46%" alt="Full assembly, dimensioned, 650 x 800 x 525 mm envelope">
+</p>
 
-## Hardware — mechanical iterations
+Dimensioned front view of the current frame (650 × 535 × 275 × 382.5 mm): [`assets/hardware/system_elevation_dimensioned.png`](assets/hardware/system_elevation_dimensioned.png). Still open: the drawing of the modified arm itself — 2 lengthened base-side links and a wider base, with full dimensions. That drawing is not made yet.
+
+### How the arm got here
 
 Three designs, in order tried.
 
@@ -107,20 +45,6 @@ Three designs, in order tried.
   <img src="assets/hardware/iteration2_scara.png" width="46%" alt="Iteration II: SCARA arm">
 </p>
 
-<p align="center">
-  <img src="assets/hardware/final_cad_render.png" width="70%" alt="Final layout: 6-DOF arm, dual dish carousels, imaging station">
-</p>
-
-<p align="center"><i>Final layout. Frame, two dish carousels, imaging/staging table, control box, base plate.</i></p>
-
-<p align="center">
-  <img src="assets/hardware/arm_elevation.png" width="46%" alt="6-DOF arm elevation, reach check against the carousel">
-  &nbsp;
-  <img src="assets/hardware/full_cad_dimensioned.png" width="46%" alt="Full assembly, dimensioned, 650 x 800 x 525 mm envelope">
-</p>
-
-The dimensioned front view of the current frame (650 × 535 × 275 × 382.5 mm) is in [`assets/hardware/system_elevation_dimensioned.png`](assets/hardware/system_elevation_dimensioned.png). Still open: the drawing for the modified arm itself — the 2 lengthened base-side links and the wider base, with full dimensions. That drawing is not made yet.
-
 ### Compute platform
 
 Raspberry Pi went through two OS installs before settling:
@@ -129,9 +53,17 @@ Raspberry Pi went through two OS installs before settling:
 2. **Camera test** — Camera Module verified working under Ubuntu Server.
 3. **Raspberry Pi OS** — final OS. The add-on HAT board only ships drivers for Raspberry Pi OS, not Ubuntu, so the deployed board runs Raspberry Pi OS.
 
-Full slide version: [`PPTs/Hardware_CAD_Midterm_2026.pptx`](PPTs/Hardware_CAD_Midterm_2026.pptx).
+Slide deck: [`PPTs/Hardware_CAD_Midterm_2026.pptx`](PPTs/Hardware_CAD_Midterm_2026.pptx).
 
 ## Vision
+
+<p align="center">
+  <img src="vision/sample/s1.png" width="46%" alt="Kirby-Bauer plate before detection">
+  &nbsp;
+  <img src="vision/sample/s1_detected.png" width="46%" alt="Same plate with dish, discs, and inhibition zones marked">
+</p>
+
+<p align="center"><i>OpenCV baseline on a 90 mm plate. Blue is the dish (R = 45 mm). Red is a disc. Purple is a measured zone. The blank control has no zone, which is a result.</i></p>
 
 Image processing is two separate jobs. Zone measurement does not read the stamp, and stamp reading does not measure the zone.
 
@@ -220,6 +152,74 @@ What else was scored on `test1.png`, so the 12/12 has a denominator:
 | Hough on other stock plates | 25 proper circles / 33 real discs |
 
 An earlier 12/12 used a different set of tiny grey crops and a 15° EasyOCR search. That recipe did not transfer to these 1-bit stamps. The two scores are different experiments. Hough radii are tuned to `test1.png`; on other photographs the miss is the detector. There is no single `run_plate.py` yet. The full narrative is [`vision/antibiotic_vision/PROCESS_REPORT.md`](vision/antibiotic_vision/PROCESS_REPORT.md). Slide images live in [`vision/antibiotic_vision/talk_pack/`](vision/antibiotic_vision/talk_pack/).
+
+## The bottleneck
+
+Village sampling feeds a central lab. The lab work that does not scale is moving dishes, imaging them, and logging what was on the plate.
+
+| Step | What happens today |
+|------|--------------------|
+| Villages | Distributed sampling |
+| Collection | Repeated field visits |
+| Laboratory | Central processing |
+| Dishes | Manual handling and imaging |
+| Bottleneck | The same motions, every dish |
+
+The objective is autonomous Petri-dish handling plus controlled imaging, at about **100 dishes per day**.
+
+## Design load
+
+These are planning numbers for storage and robot duty cycle. The 2–5% sampling fraction is a project assumption, not an epidemiological estimate.
+
+| Input | Value |
+|-------|--------|
+| Village size | ~100 people |
+| Sampling fraction | 2–5% → 2–5 samples per village |
+| Field collectors | 4–5 |
+| Villages per collector per day | 5–6 |
+| Incoming dishes | **~100 / day** |
+| Time a dish stays in process | 5–6 days |
+| In-process capacity | **~500–600 dishes** |
+
+Day 1 holds 100 dishes. By day 6 the pipeline is holding about 600, because earlier batches are still incubating.
+
+## System
+
+Perception and motion are split. The Pi decides what and where. A real-time controller decides when and how.
+
+```mermaid
+flowchart LR
+  queue["Dish queue"] --> pi["Raspberry Pi 5<br/>vision, localization, planning"]
+  pi --> esp["ESP32<br/>motor timing and I/O"]
+  esp --> arm["Manipulator<br/>and gripper"]
+  arm --> out["Imaging station<br/>and storage"]
+  pi --> cam["Plate camera<br/>zones and disc codes"]
+  arm --> grip["Gripper camera<br/>QR and pick alignment"]
+```
+
+| Layer | Hardware | Job |
+|-------|----------|-----|
+| Computation | Raspberry Pi 5 | Computer vision, planning, camera interface |
+| Control | ESP32 (Zephyr is the integration target; current code is Arduino) | Motor timing, limit inputs, command execution |
+| Actuation | Drivers, motors, manipulator, gripper | Pick, transfer, place |
+| Imaging | 12 MP Camera Module 3, diffused light | Plate capture |
+| Identity | ESP32-CAM on the gripper | QR or barcode before pickup |
+| Storage | Carousel or chamber | Queue of dishes under controlled conditions |
+
+Pick-and-place closes the loop after the grip, not only before it:
+
+1. Capture
+2. Detect the dish
+3. Localize `x, y, θ`
+4. Transform camera coordinates into the robot frame
+5. Plan a collision-aware path
+6. Approach
+7. Grip and confirm the hold
+8. Transfer
+9. Release
+10. Verify, then retry or escalate
+
+CAD, the Gazebo clip, and the arm iterations are at the top of this page. Torque, stiffness, and collisions still have to be rechecked after the link-length change. Details: [system architecture](research/02-system-architecture.md).
 
 ## Hardware draft
 
