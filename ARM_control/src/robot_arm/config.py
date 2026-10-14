@@ -26,6 +26,7 @@ class RobotConfig:
     hardware: HardwareSettings
     joints: tuple[ServoCalibration, ...]
     control_hz: float
+    config_dir: Path
 
     @property
     def require_confirmation(self) -> bool:
@@ -50,7 +51,12 @@ class RobotConfig:
         if control_hz <= 0:
             raise ConfigError("control_hz must be positive")
         joints = _joints(joints_doc, motion_doc, root)
-        return cls(hardware=hardware, joints=joints, control_hz=control_hz)
+        return cls(
+            hardware=hardware,
+            joints=joints,
+            control_hz=control_hz,
+            config_dir=root,
+        )
 
 
 def _read_yaml(path: Path) -> dict:

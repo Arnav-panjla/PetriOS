@@ -37,6 +37,30 @@ and 180° is `max_us`.
 Home angles computed from those pulses are 90°, 32.73°, 90°, 112.5°,
 116.25°, and 50.04°.
 
+## Cylindrical coordinates
+
+`configs/geometry.yaml` names the servo roles and repeats the URDF joint
+origins so they can be checked. The loader reads `models/robot.urdf` and
+rejects the YAML if those origins disagree. `configs/calibration.yaml`
+holds zero offsets and direction signs. Those start at an identity map.
+They are not measured.
+
+`r` and `z` are millimetres about the base joint axis. Positive `r` is the
+direction the CAD arm reaches when joint 1 is at its geometric zero.
+`theta` and `tool_pitch` are degrees. `q = 0` in the URDF is not the servo
+home pulse.
+
+```text
+ik 120 45 80 -90
+goto 120 45 80 -90
+pose
+calibration show
+calibration set servo_1.zero_offset 5
+```
+
+`python -m robot_arm.interfaces.cli --dry-run` prints those results without
+sending pulses.
+
 Speed limits in `motion.yaml` (60 °/s and 200 °/s²) were not measured.
 Change them there. They are not part of the servo calibration.
 

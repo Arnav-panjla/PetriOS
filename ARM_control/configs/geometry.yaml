@@ -1,0 +1,51 @@
+# Nominal geometry sheet. The URDF is the source of truth.
+# Loader rejects this file if extracted_joints disagree with models/robot.urdf.
+# Lengths below were read from that URDF. They are metres.
+# Carousel, camera stand, and dishes are not part of this chain.
+
+urdf: ../models/robot.urdf
+units:
+  length: m
+  angle: rad
+
+# Servo roles are the control convention. The URDF does not name servos.
+roles:
+  azimuth: {servo: 0, urdf_joint: joint_1}
+  shoulder: {servo: 1, urdf_joint: joint_2}
+  elbow: {servo: 2, urdf_joint: joint_3}
+  wrist_pitch: {servo: 3, urdf_joint: joint_4}
+  wrist_roll: {servo: 4, urdf_joint: joint_5}
+  gripper: {servo: 5}
+
+positioning_chain:
+  - joint_1
+  - joint_2
+  - joint_3
+  - joint_4
+  - joint_5
+
+cylindrical_frame:
+  origin: joint_1 axis
+  z_axis: [0, 0, 1]
+  # At theta = 0 and joint_1 q = 0, positive r points along base -Y,
+  # which is the direction the CAD arm reaches.
+  theta_zero_direction: [0, -1, 0]
+  api_length: mm
+  api_angle: deg
+
+extracted_joints:
+  joint_1:
+    xyz_m: [0.0, -0.029745, 0.0716]
+    axis: [0.0, 0.0, 1.0]
+  joint_2:
+    xyz_m: [0.0086, -0.01, 0.01925]
+    axis: [1.0, 0.0, 0.0]
+  joint_3:
+    xyz_m: [0.0, 0.0, 0.11049]
+    axis: [1.0, 0.0, 0.0]
+  joint_4:
+    xyz_m: [0.0, -0.130491, 0.0]
+    axis: [1.0, 0.0, 0.0]
+  joint_5:
+    xyz_m: [0.010001, -0.067246, -0.000001]
+    axis: [0.0, 1.0, 0.0]

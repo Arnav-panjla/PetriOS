@@ -49,6 +49,23 @@ class ArmController:
         )
         # None means "use the velocity and acceleration limits in motion.yaml".
         self.soften_ms: float | None = None
+        self.dry_run = False
+        self._kinematics = None
+
+    def kinematics(self):
+        if self._kinematics is None:
+            from robot_arm.calibration import CalibrationStore
+            from robot_arm.kinematics.cylindrical import CylindricalKinematics
+            from robot_arm.kinematics.geometry import load_geometry
+
+            store = CalibrationStore.load(self.config.config_dir)
+            self._store = store
+            self._kinematics = CylindricalKinematics(
+                load_geometry(self.config.config_dir),
+                store.joints,
+                store.coordinates,
+            )
+        return self._kinematics
 
     @property
     def ready(self) -> bool:
@@ -73,13 +90,80 @@ class ArmController:
         targets = [joint.servo.calibration.home_deg for joint in self._joints]
         self.move_all(targets)
 
+    def rotate_wrist(self, degrees: float, duration_s: float | None = None) -> None:
+        """Set servo 4, the wrist axial rotation. Other joints hold."""
+        self.move_joint(4, degrees) if duration_s is None else self._move_index(4, degrees, duration_s)
+
+    def set_gripper(self, degrees: float, duration_s: float | None = None) -> None:
+        """Set servo 5, the claw. Other joints hold."""
+        if duration_s is None:
+            self.move_joint(5, degrees)
+        else:
+            self._move_index(5, degrees, duration_s)
+
+    def get_pose(self):
+        """Forward kinematics of the commanded angles. Not a measured pose."""
+        commanded = tuple(joint.commanded_deg for joint in self._joints)
+        return self.kinematics().fk(commanded)
+
+    def calibration_show(self) -> str:
+        self.kinematics()
+        return self._store.show()
+
+    def calibration_set(self, key: str, value: str) -> None:
+        self.kinematics()
+        self._store.set_value(key, value)
+
+    def move_to_cylindrical(
+        self,
+        r: float,
+        theta: float,
+        z: float,
+        tool_pitch: float = 0.0,
+        duration: float | None = None,
+        elbow: str | None = None,
+    ):
+        """Move the tool in cylindrical coordinates.
+
+        r and z are millimetres. theta and tool_pitch are degrees.
+        Servo 4 and servo 5 stay at their current commands.
+        """
+        current = tuple(joint.commanded_deg for joint in self._joints)
+        solution = self.kinematics().ik(
+            r,
+            theta,
+            z,
+            tool_pitch,
+            current_servo_deg=current,  # type: ignore[arg-type]
+            elbow=elbow,
+        )
+        if solution.warning:
+            logger.warning("geometric note: %s", solution.warning)
+        logger.info(
+            "ik %s via %s, residual %.3f mm, pitch %.3f deg",
+            solution.elbow,
+            solution.source,
+            solution.residual_mm,
+            solution.residual_pitch_deg,
+        )
+        if self.dry_run:
+            return solution
+        self.move_all(solution.servo_deg, duration_s=duration)
+        return solution
+
+    def _move_index(self, index: int, degrees: float, duration_s: float) -> None:
+        self._safety.check_index(index, len(self._joints))
+        targets = [joint.commanded_deg for joint in self._joints]
+        targets[index] = degrees
+        self.move_all(targets, duration_s=duration_s)
+
     def move_joint(self, index: int, degrees: float) -> None:
         self._safety.check_index(index, len(self._joints))
         targets = [joint.commanded_deg for joint in self._joints]
         targets[index] = degrees
         self.move_all(targets)
 
-    def move_all(self, degrees: Sequence[float]) -> None:
+    def move_all(self, degrees: Sequence[float], duration_s: float | None = None) -> None:
         self._safety.ensure_pwm_allowed()
         if len(degrees) != len(self._joints):
             raise ValueError(
@@ -93,6 +177,7 @@ class ArmController:
             targets,
             joints,
             soften_ms=self.soften_ms,
+            duration_s=duration_s,
         )
         logger.info("trajectory duration %.3f s", trajectory.duration_s)
         period = 1.0 / self.config.control_hz
