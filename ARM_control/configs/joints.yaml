@@ -1,0 +1,35 @@
+# Canonical home pose. Pulses are copied from esp32_slider.ino initialPulse[]
+# and from ARM_control/arm_servos.py MOTORS. The program never writes this file.
+# 0 degrees is min_us and 180 degrees is max_us for that joint.
+travel_deg: 180
+joints:
+  - index: 0
+    channel: 10
+    min_us: 500
+    max_us: 2900
+    home_us: 1700
+  - index: 1
+    channel: 11
+    min_us: 500
+    max_us: 2700
+    home_us: 900
+  - index: 2
+    channel: 12
+    min_us: 500
+    max_us: 2900
+    home_us: 1700
+  - index: 3
+    channel: 13
+    min_us: 500
+    max_us: 2900
+    home_us: 2000
+  - index: 4
+    channel: 14
+    min_us: 500
+    max_us: 2900
+    home_us: 2050
+  - index: 5
+    channel: 15
+    min_us: 1100
+    max_us: 1600
+    home_us: 1550

@@ -1,0 +1,24 @@
+# Uncalibrated motion limits. They are not measured on this arm.
+# Edit them to change how long a quintic move takes.
+# Peak quintic speed is 1.875 * |delta| / T.
+# Peak quintic acceleration is (10*sqrt(3)/3) * |delta| / T^2.
+control_hz: 50
+joints:
+  - index: 0
+    max_velocity_deg_s: 60
+    max_acceleration_deg_s2: 200
+  - index: 1
+    max_velocity_deg_s: 60
+    max_acceleration_deg_s2: 200
+  - index: 2
+    max_velocity_deg_s: 60
+    max_acceleration_deg_s2: 200
+  - index: 3
+    max_velocity_deg_s: 60
+    max_acceleration_deg_s2: 200
+  - index: 4
+    max_velocity_deg_s: 60
+    max_acceleration_deg_s2: 200
+  - index: 5
+    max_velocity_deg_s: 60
+    max_acceleration_deg_s2: 200
