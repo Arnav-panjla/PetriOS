@@ -32,4 +32,4 @@ joints:
     channel: 15
     min_us: 1100
     max_us: 1600
-    home_us: 1550
+    home_us: 1239

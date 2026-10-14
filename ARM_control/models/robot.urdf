@@ -56,6 +56,9 @@
   <joint name="tool0_fixed" type="fixed">
     <parent link="link_5"/>
     <child link="tool0"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <!-- Midpoint of the two finger pivots in robot_arm_final_urdf_v4.urdf.
+         Left  xyz="-0.005981 -0.068816 -0.001500"
+         Right xyz="0.025679 -0.068611 0.001500" -->
+    <origin xyz="0.009849 -0.0687135 0" rpy="0 0 0"/>
   </joint>
 </robot>

@@ -1,0 +1,7 @@
+PyYAML
+
+[dev]
+pytest
+
+[hardware]
+adafruit-circuitpython-servokit

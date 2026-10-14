@@ -24,13 +24,18 @@ class TrajectoryPlanner:
         joints: Sequence[ServoCalibration],
         *,
         soften_ms: float | None = None,
+        duration_s: float | None = None,
     ) -> Trajectory:
         if not len(starts) == len(targets) == len(joints):
             raise ValueError("starts, targets, and joints must be the same length")
         deltas = [
             target - start for start, target in zip(starts, targets, strict=True)
         ]
-        if soften_ms is not None:
+        if duration_s is not None:
+            if duration_s < 0:
+                raise ValueError("duration must be >= 0")
+            duration = duration_s
+        elif soften_ms is not None:
             if soften_ms <= 0:
                 duration = 0.0
             else:

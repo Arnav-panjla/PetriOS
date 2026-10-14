@@ -32,10 +32,10 @@ and 180° is `max_us`.
 | 2 | 12 | 500 | 2900 | 1700 |
 | 3 | 13 | 500 | 2900 | 2000 |
 | 4 | 14 | 500 | 2900 | 2050 |
-| 5 | 15 | 1100 | 1600 | 1550 |
+| 5 | 15 | 1100 | 1600 | 1239 |
 
 Home angles computed from those pulses are 90°, 32.73°, 90°, 112.5°,
-116.25°, and 162°.
+116.25°, and 50.04°.
 
 Speed limits in `motion.yaml` (60 °/s and 200 °/s²) were not measured.
 Change them there. They are not part of the servo calibration.

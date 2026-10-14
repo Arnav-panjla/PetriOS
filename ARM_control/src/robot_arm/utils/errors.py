@@ -15,3 +15,7 @@ class JointLimitError(RobotArmError):
 
 class NotReadyError(RobotArmError):
     """PWM was requested before startup authorization."""
+
+
+class UnreachableError(RobotArmError):
+    """No joint solution reaches the requested pose inside the servo limits."""
