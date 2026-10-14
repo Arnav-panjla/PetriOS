@@ -1,0 +1,96 @@
+# Arm geometry for forward and inverse kinematics.
+# Source: ARM_control/simul files/robot_arm_description/urdf/robot_arm_final_urdf_v4.urdf
+# The same joint origins and axes are in robot_arm_gazebo.urdf.xacro.
+# Carousel, camera stand, and petri dish are not included.
+#
+# Units: metres and radians.
+# Mesh scale in that URDF is 0.001, so the STL files are millimetres.
+# These joint origins are already in metres.
+#
+# At q = 0 the arm is exactly this chain. That zero is the CAD pose.
+# It is not the servo home pulse in configs/joints.yaml.
+# Controller degree 0 means that servo's minimum pulse, not q = 0 here.
+# Which servo drives joint_1 is not written in the URDF. Channel order
+# joint 0..4 is the usual base-to-wrist guess. Joint 5 of the controller
+# is the short-travel servo (1100-1600 us), which matches a finger, not
+# one of these five positioning joints.
+
+units:
+  length: m
+  angle: rad
+
+forward_kinematics:
+  # T(q) = T1(q1) T2(q2) T3(q3) T4(q4) T5(q5)
+  # Ti(qi) = translate(xyz_m) * rotate(axis, qi)
+  # rpy is 0 for every joint, so there is no extra fixed rotation.
+  # Joints 2, 3 and 4 are parallel: each axis is local X.
+  # Joint 1 is local Z. Joint 5 is local Y.
+
+positioning_joints:
+  - name: joint_1
+    parent: base_link
+    child: link_1
+    xyz_m: [0.0, -0.029745, 0.0716]
+    rpy_rad: [0.0, 0.0, 0.0]
+    axis: [0.0, 0.0, 1.0]
+    translation_norm_m: 0.077532735
+    zero_pose_in_base_m: [0.0, -0.029745, 0.0716]
+  - name: joint_2
+    parent: link_1
+    child: link_2
+    xyz_m: [0.0086, -0.01, 0.01925]
+    rpy_rad: [0.0, 0.0, 0.0]
+    axis: [1.0, 0.0, 0.0]
+    translation_norm_m: 0.023335006
+    zero_pose_in_base_m: [0.0086, -0.039745, 0.09085]
+  - name: joint_3
+    parent: link_2
+    child: link_3
+    xyz_m: [0.0, 0.0, 0.11049]
+    rpy_rad: [0.0, 0.0, 0.0]
+    axis: [1.0, 0.0, 0.0]
+    translation_norm_m: 0.11049
+    zero_pose_in_base_m: [0.0086, -0.039745, 0.20134]
+  - name: joint_4
+    parent: link_3
+    child: link_4
+    xyz_m: [0.0, -0.130491, 0.0]
+    rpy_rad: [0.0, 0.0, 0.0]
+    axis: [1.0, 0.0, 0.0]
+    translation_norm_m: 0.130491
+    zero_pose_in_base_m: [0.0086, -0.170236, 0.20134]
+  - name: joint_5
+    parent: link_4
+    child: link_5
+    xyz_m: [0.010001, -0.067246, -0.000001]
+    rpy_rad: [0.0, 0.0, 0.0]
+    axis: [0.0, 1.0, 0.0]
+    translation_norm_m: 0.06798562
+    zero_pose_in_base_m: [0.018601, -0.237482, 0.201339]
+
+wrist:
+  frame: link_5
+  note: >
+    Inverse kinematics for position should target this frame, then add a
+    tool offset in link_5 coordinates. q = 0 puts the wrist at
+    zero_pose_in_base_m of joint_5.
+
+# Finger pivots, still the arm, not used by the five-joint chain above.
+# Right finger mimics the left with multiplier -1.
+gripper:
+  left_finger_joint:
+    parent: link_5
+    xyz_m: [-0.005981, -0.068816, -0.0015]
+    rpy_rad: [0.0, 0.0, 0.0]
+    axis: [0.0, 0.0, 1.0]
+    limit_rad: [-0.8, 0.8]
+  right_finger_joint:
+    parent: link_5
+    xyz_m: [0.025679, -0.068611, 0.0015]
+    rpy_rad: [0.0, 0.0, 0.0]
+    axis: [0.0, 0.0, 1.0]
+    limit_rad: [-0.8, 0.8]
+    mimic_joint: left_finger_joint
+    mimic_multiplier: -1.0
+    mimic_offset: 0.0
+  finger_pivot_midpoint_in_link_5_m: [0.009849, -0.0687135, 0.0]

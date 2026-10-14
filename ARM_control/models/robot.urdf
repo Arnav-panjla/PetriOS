@@ -1,66 +1,61 @@
 <?xml version="1.0"?>
 <!--
-  Placeholder only. Link lengths, masses, and joint axes are NOT measured.
-  A joint angle of 0 rad is this software's minimum pulse, and the upper
-  limit is that joint's maximum pulse (180 degrees). Do not use this file
-  for inverse kinematics, collision checking, or simulation.
-  Referenced by robot_arm.kinematics.model.UncalibratedKinematics and README.md.
+  Arm only. Joint origins and axes are copied from
+  simul files/robot_arm_description/urdf/robot_arm_final_urdf_v4.urdf.
+  The Gazebo xacro has the same five origins and axes.
+  Carousel, camera stand, and dish models are not in this file.
+  Meshes are omitted. Limits of +/- pi are the Gazebo revolute limits,
+  not measured mechanical stops. The CAD file marks these joints continuous.
+  q = 0 is the CAD pose. It is not the servo home pulse.
 -->
-<robot name="petri_arm_placeholder">
+<robot name="robot_arm">
   <link name="base_link"/>
-  <link name="link_0"/>
   <link name="link_1"/>
   <link name="link_2"/>
   <link name="link_3"/>
   <link name="link_4"/>
   <link name="link_5"/>
-  <link name="tool"/>
 
-  <joint name="joint_0" type="revolute">
-    <parent link="base_link"/>
-    <child link="link_0"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <axis xyz="0 0 1"/>
-    <limit lower="0" upper="3.141592653589793" effort="1" velocity="1"/>
-  </joint>
   <joint name="joint_1" type="revolute">
-    <parent link="link_0"/>
+    <parent link="base_link"/>
     <child link="link_1"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <origin xyz="0.000000 -0.029745 0.071600" rpy="0 0 0"/>
     <axis xyz="0 0 1"/>
-    <limit lower="0" upper="3.141592653589793" effort="1" velocity="1"/>
+    <limit lower="-3.14159" upper="3.14159" effort="50.0" velocity="2.0"/>
   </joint>
   <joint name="joint_2" type="revolute">
     <parent link="link_1"/>
     <child link="link_2"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <axis xyz="0 0 1"/>
-    <limit lower="0" upper="3.141592653589793" effort="1" velocity="1"/>
+    <origin xyz="0.008600 -0.010000 0.019250" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="-3.14159" upper="3.14159" effort="50.0" velocity="2.0"/>
   </joint>
   <joint name="joint_3" type="revolute">
     <parent link="link_2"/>
     <child link="link_3"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <axis xyz="0 0 1"/>
-    <limit lower="0" upper="3.141592653589793" effort="1" velocity="1"/>
+    <origin xyz="0.000000 0.000000 0.110490" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="-3.14159" upper="3.14159" effort="50.0" velocity="2.0"/>
   </joint>
   <joint name="joint_4" type="revolute">
     <parent link="link_3"/>
     <child link="link_4"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <axis xyz="0 0 1"/>
-    <limit lower="0" upper="3.141592653589793" effort="1" velocity="1"/>
+    <origin xyz="0.000000 -0.130491 0.000000" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="-3.14159" upper="3.14159" effort="50.0" velocity="2.0"/>
   </joint>
   <joint name="joint_5" type="revolute">
     <parent link="link_4"/>
     <child link="link_5"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
-    <axis xyz="0 0 1"/>
-    <limit lower="0" upper="3.141592653589793" effort="1" velocity="1"/>
+    <origin xyz="0.010001 -0.067246 -0.000001" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-3.14159" upper="3.14159" effort="50.0" velocity="2.0"/>
   </joint>
-  <joint name="tool_fixed" type="fixed">
+
+  <link name="tool0"/>
+  <joint name="tool0_fixed" type="fixed">
     <parent link="link_5"/>
-    <child link="tool"/>
+    <child link="tool0"/>
     <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
 </robot>

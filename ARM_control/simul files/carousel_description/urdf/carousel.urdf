@@ -1,0 +1,366 @@
+<?xml version="1.0"?>
+<robot name="carousel">
+
+  <!-- ========================================================= -->
+  <!-- MATERIALS                                                  -->
+  <!-- ========================================================= -->
+
+  <material name="base_color">
+    <color rgba="0.15 0.15 0.15 1.0"/>
+  </material>
+
+  <material name="holder_color">
+    <color rgba="0.20 0.45 0.85 1.0"/>
+  </material>
+
+  <material name="plate_color">
+    <color rgba="0.85 0.30 0.10 1.0"/>
+  </material>
+
+
+  <!-- ========================================================= -->
+  <!-- BASE + CENTRAL SHAFT                                      -->
+  <!-- ========================================================= -->
+
+  <link name="base_link">
+
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="1.57079632679 0 0"/>
+
+      <geometry>
+        <mesh
+          filename="package://carousel_description/meshes/carousal_base.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+
+      <material name="base_color"/>
+    </visual>
+
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="1.57079632679 0 0"/>
+
+      <geometry>
+        <mesh
+          filename="package://carousel_description/meshes/carousal_base.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+    </collision>
+
+  </link>
+
+
+  <!-- ========================================================= -->
+  <!-- HOLDER 1                                                   -->
+  <!-- ========================================================= -->
+
+  <link name="holder_1">
+
+    <visual>
+      <origin xyz="0 0 0"
+              rpy="1.57079632679 0 0"/>
+
+      <geometry>
+        <mesh
+          filename="package://carousel_description/meshes/carousal_stand.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+
+      <material name="holder_color"/>
+    </visual>
+
+    <collision>
+      <origin xyz="0 0 0"
+              rpy="1.57079632679 0 0"/>
+
+      <geometry>
+        <mesh
+          filename="package://carousel_description/meshes/carousal_stand.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+    </collision>
+
+  </link>
+
+  <joint name="holder_1_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="holder_1"/>
+
+    <origin
+      xyz="0.070 0 0.200"
+      rpy="0 0 -1.57079632679"/>
+  </joint>
+
+
+  <!-- ========================================================= -->
+  <!-- HOLDER 2                                                   -->
+  <!-- ========================================================= -->
+
+  <link name="holder_2">
+
+    <visual>
+      <origin xyz="0 0 0"
+              rpy="1.57079632679 0 0"/>
+
+      <geometry>
+        <mesh
+          filename="package://carousel_description/meshes/carousal_stand.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+
+      <material name="holder_color"/>
+    </visual>
+
+    <collision>
+      <origin xyz="0 0 0"
+              rpy="1.57079632679 0 0"/>
+
+      <geometry>
+        <mesh
+          filename="package://carousel_description/meshes/carousal_stand.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+    </collision>
+
+  </link>
+
+  <joint name="holder_2_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="holder_2"/>
+
+    <origin
+      xyz="0.035 0.0606218 0.200"
+      rpy="0 0 -0.52359877560"/>
+  </joint>
+
+
+  <!-- ========================================================= -->
+  <!-- HOLDER 3                                                   -->
+  <!-- ========================================================= -->
+
+  <link name="holder_3">
+
+    <visual>
+      <origin xyz="0 0 0"
+              rpy="1.57079632679 0 0"/>
+
+      <geometry>
+        <mesh
+          filename="package://carousel_description/meshes/carousal_stand.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+
+      <material name="holder_color"/>
+    </visual>
+
+    <collision>
+      <origin xyz="0 0 0"
+              rpy="1.57079632679 0 0"/>
+
+      <geometry>
+        <mesh
+          filename="package://carousel_description/meshes/carousal_stand.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+    </collision>
+
+  </link>
+
+  <joint name="holder_3_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="holder_3"/>
+
+    <origin
+      xyz="-0.035 0.0606218 0.200"
+      rpy="0 0 0.52359877560"/>
+  </joint>
+
+
+  <!-- ========================================================= -->
+  <!-- HOLDER 4                                                   -->
+  <!-- ========================================================= -->
+
+  <link name="holder_4">
+
+    <visual>
+      <origin xyz="0 0 0"
+              rpy="1.57079632679 0 0"/>
+
+      <geometry>
+        <mesh
+          filename="package://carousel_description/meshes/carousal_stand.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+
+      <material name="holder_color"/>
+    </visual>
+
+    <collision>
+      <origin xyz="0 0 0"
+              rpy="1.57079632679 0 0"/>
+
+      <geometry>
+        <mesh
+          filename="package://carousel_description/meshes/carousal_stand.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+    </collision>
+
+  </link>
+
+  <joint name="holder_4_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="holder_4"/>
+
+    <origin
+      xyz="-0.070 0 0.200"
+      rpy="0 0 1.57079632679"/>
+  </joint>
+
+
+  <!-- ========================================================= -->
+  <!-- HOLDER 5                                                   -->
+  <!-- ========================================================= -->
+
+  <link name="holder_5">
+
+    <visual>
+      <origin xyz="0 0 0"
+              rpy="1.57079632679 0 0"/>
+
+      <geometry>
+        <mesh
+          filename="package://carousel_description/meshes/carousal_stand.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+
+      <material name="holder_color"/>
+    </visual>
+
+    <collision>
+      <origin xyz="0 0 0"
+              rpy="1.57079632679 0 0"/>
+
+      <geometry>
+        <mesh
+          filename="package://carousel_description/meshes/carousal_stand.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+    </collision>
+
+  </link>
+
+  <joint name="holder_5_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="holder_5"/>
+
+    <origin
+      xyz="-0.035 -0.0606218 0.200"
+      rpy="0 0 2.61799387799"/>
+  </joint>
+
+
+  <!-- ========================================================= -->
+  <!-- HOLDER 6                                                   -->
+  <!-- ========================================================= -->
+
+  <link name="holder_6">
+
+    <visual>
+      <origin xyz="0 0 0"
+              rpy="1.57079632679 0 0"/>
+
+      <geometry>
+        <mesh
+          filename="package://carousel_description/meshes/carousal_stand.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+
+      <material name="holder_color"/>
+    </visual>
+
+    <collision>
+      <origin xyz="0 0 0"
+              rpy="1.57079632679 0 0"/>
+
+      <geometry>
+        <mesh
+          filename="package://carousel_description/meshes/carousal_stand.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+    </collision>
+
+  </link>
+
+  <joint name="holder_6_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="holder_6"/>
+
+    <origin
+      xyz="0.035 -0.0606218 0.200"
+      rpy="0 0 -2.61799387799"/>
+  </joint>
+
+
+  <!-- ========================================================= -->
+  <!-- TOP CIRCULAR PLATE                                        -->
+  <!-- holder_plates.stl                                         -->
+  <!-- ========================================================= -->
+
+  <link name="top_plate">
+
+    <visual>
+
+      <!-- CAD Y-up -> URDF Z-up -->
+      <origin
+        xyz="0 0 0"
+        rpy="1.57079632679 0 0"/>
+
+      <geometry>
+        <mesh
+          filename="package://carousel_description/meshes/holder_plates.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+
+      <material name="plate_color"/>
+
+    </visual>
+
+    <collision>
+
+      <origin
+        xyz="0 0 0"
+        rpy="1.57079632679 0 0"/>
+
+      <geometry>
+        <mesh
+          filename="package://carousel_description/meshes/holder_plates.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+
+    </collision>
+
+  </link>
+
+
+  <!-- ========================================================= -->
+  <!-- TOP PLATE POSITION                                        -->
+  <!-- ========================================================= -->
+
+  <joint name="top_plate_joint" type="fixed">
+
+    <parent link="base_link"/>
+    <child link="top_plate"/>
+
+    <!-- Top of the 455 mm central shaft -->
+    <origin
+      xyz="0 0 0.1375"
+      rpy="0 0 0.5235987756"/>
+
+  </joint>
+
+
+</robot>

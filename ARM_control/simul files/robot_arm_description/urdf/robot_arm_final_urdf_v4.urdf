@@ -1,0 +1,434 @@
+<?xml version="1.0"?>
+
+<robot name="robot_arm_with_gripper">
+
+
+  <!-- ========================================================= -->
+  <!-- BASE -->
+  <!-- ========================================================= -->
+
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh
+          filename="package://robot_arm_description/meshes/base_link.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="mat_base">
+        <color rgba="0.55 0.55 0.58 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+
+  <!-- ========================================================= -->
+  <!-- LINK 1 -->
+  <!-- ========================================================= -->
+
+  <link name="link_1">
+    <visual>
+      <origin xyz="-0.000000 0.029745 -0.071600" rpy="0 0 0"/>
+      <geometry>
+        <mesh
+          filename="package://robot_arm_description/meshes/link_1.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="mat_link_1">
+        <color rgba="0.15 0.45 0.90 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+
+  <!-- ========================================================= -->
+  <!-- LINK 2 -->
+  <!-- ========================================================= -->
+
+  <link name="link_2">
+    <visual>
+      <origin xyz="-0.008600 0.039745 -0.090850" rpy="0 0 0"/>
+      <geometry>
+        <mesh
+          filename="package://robot_arm_description/meshes/link_2.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="mat_link_2">
+        <color rgba="0.20 0.70 0.35 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+
+  <!-- ========================================================= -->
+  <!-- LINK 3 -->
+  <!-- ========================================================= -->
+
+  <link name="link_3">
+    <visual>
+      <origin xyz="-0.008600 0.039745 -0.201340" rpy="0 0 0"/>
+      <geometry>
+        <mesh
+          filename="package://robot_arm_description/meshes/link_3.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="mat_link_3">
+        <color rgba="0.95 0.50 0.12 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+
+  <!-- ========================================================= -->
+  <!-- LINK 4 -->
+  <!-- ========================================================= -->
+
+  <link name="link_4">
+    <visual>
+      <origin xyz="-0.008600 0.170236 -0.201340" rpy="0 0 0"/>
+      <geometry>
+        <mesh
+          filename="package://robot_arm_description/meshes/link_4.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="mat_link_4">
+        <color rgba="0.65 0.30 0.85 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+
+  <!-- ========================================================= -->
+  <!-- LINK 5 -->
+  <!-- LINK 5 + GRIPPER GEAR ASSEMBLY -->
+  <!-- ========================================================= -->
+
+  <link name="link_5">
+
+    <!-- Main Link 5 -->
+    <visual>
+      <origin xyz="-0.018601 0.237482 -0.201339" rpy="0 0 0"/>
+      <geometry>
+        <mesh
+          filename="package://robot_arm_description/meshes/link_5.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="mat_link_5">
+        <color rgba="0.95 0.80 0.15 1.0"/>
+      </material>
+    </visual>
+
+    <!-- Gripper Gear -->
+    <visual>
+      <origin xyz="-0.018601 0.237482 -0.201339" rpy="0 0 0"/>
+      <geometry>
+        <mesh
+          filename="package://robot_arm_description/meshes/gripper_gear.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="mat_gripper_gear">
+        <color rgba="0.25 0.25 0.28 1.0"/>
+      </material>
+    </visual>
+
+    <!-- Link 5 Collision -->
+    <collision>
+      <origin xyz="-0.018601 0.237482 -0.201339" rpy="0 0 0"/>
+      <geometry>
+        <mesh
+          filename="package://robot_arm_description/meshes/link_5.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+    </collision>
+
+    <!-- Link 5 Inertia -->
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="0.45"/>
+      <inertia
+        ixx="0.0009"
+        ixy="0.0"
+        ixz="0.0"
+        iyy="0.0009"
+        iyz="0.0"
+        izz="0.0009"/>
+    </inertial>
+
+  </link>
+
+
+  <!-- ========================================================= -->
+  <!-- ARM JOINT 1 -->
+  <!-- ========================================================= -->
+
+  <joint name="joint_1" type="continuous">
+    <parent link="base_link"/>
+    <child link="link_1"/>
+
+    <origin
+      xyz="0.000000 -0.029745 0.071600"
+      rpy="0 0 0"/>
+
+    <axis xyz="0 0 1"/>
+  </joint>
+
+
+  <!-- ========================================================= -->
+  <!-- ARM JOINT 2 -->
+  <!-- ========================================================= -->
+
+  <joint name="joint_2" type="continuous">
+    <parent link="link_1"/>
+    <child link="link_2"/>
+
+    <origin
+      xyz="0.008600 -0.010000 0.019250"
+      rpy="0 0 0"/>
+
+    <axis xyz="1 0 0"/>
+  </joint>
+
+
+  <!-- ========================================================= -->
+  <!-- ARM JOINT 3 -->
+  <!-- ========================================================= -->
+
+  <joint name="joint_3" type="continuous">
+    <parent link="link_2"/>
+    <child link="link_3"/>
+
+    <origin
+      xyz="0.000000 0.000000 0.110490"
+      rpy="0 0 0"/>
+
+    <axis xyz="1 0 0"/>
+  </joint>
+
+
+  <!-- ========================================================= -->
+  <!-- ARM JOINT 4 -->
+  <!-- ========================================================= -->
+
+  <joint name="joint_4" type="continuous">
+    <parent link="link_3"/>
+    <child link="link_4"/>
+
+    <origin
+      xyz="0.000000 -0.130491 0.000000"
+      rpy="0 0 0"/>
+
+    <axis xyz="1 0 0"/>
+  </joint>
+
+
+  <!-- ========================================================= -->
+  <!-- ARM JOINT 5 -->
+  <!-- ========================================================= -->
+
+  <joint name="joint_5" type="continuous">
+    <parent link="link_4"/>
+    <child link="link_5"/>
+
+    <origin
+      xyz="0.010001 -0.067246 -0.000001"
+      rpy="0 0 0"/>
+
+    <axis xyz="0 1 0"/>
+  </joint>
+
+
+  <!-- ========================================================= -->
+  <!-- LEFT GRIPPER LINK / LINKAGE -->
+  <!-- ========================================================= -->
+
+  <link name="left_gripper_link">
+    <visual>
+      <origin
+        xyz="-0.014123 0.301592 -0.205839"
+        rpy="0 0 0"/>
+
+      <geometry>
+        <mesh
+          filename="package://robot_arm_description/meshes/left_gripper_link.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+
+      <material name="mat_left_gripper">
+        <color rgba="0.10 0.75 0.80 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+
+  <!-- Upper pivot of left linkage -->
+
+  <joint name="left_gripper_link_joint" type="revolute">
+    <parent link="link_5"/>
+    <child link="left_gripper_link"/>
+
+    <origin
+      xyz="0.005521 -0.078110 0.004500"
+      rpy="0 0 0"/>
+
+    <axis xyz="0 0 1"/>
+
+    <limit
+      lower="-0.8"
+      upper="0.8"
+      effort="1.0"
+      velocity="2.0"/>
+
+    <!-- Linkage follows the finger approximately according
+         to the geometry of the four-bar mechanism. -->
+
+    <mimic
+      joint="left_finger_joint"
+      multiplier="0.81"
+      offset="0.0"/>
+  </joint>
+
+
+  <!-- ========================================================= -->
+  <!-- RIGHT GRIPPER LINK / LINKAGE -->
+  <!-- ========================================================= -->
+
+  <link name="right_gripper_link">
+    <visual>
+      <origin
+        xyz="-0.023127 0.301587 -0.205839"
+        rpy="0 0 0"/>
+
+      <geometry>
+        <mesh
+          filename="package://robot_arm_description/meshes/right_gripper_link.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+
+      <material name="mat_right_gripper">
+        <color rgba="0.90 0.30 0.60 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+
+  <!-- Upper pivot of right linkage -->
+
+  <joint name="right_gripper_link_joint" type="revolute">
+    <parent link="link_5"/>
+    <child link="right_gripper_link"/>
+
+    <origin
+      xyz="0.014526 -0.078104 0.004500"
+      rpy="0 0 0"/>
+
+    <axis xyz="0 0 1"/>
+
+    <limit
+      lower="-0.8"
+      upper="0.8"
+      effort="1.0"
+      velocity="2.0"/>
+
+    <!-- Opposite side of the symmetric mechanism -->
+
+    <mimic
+      joint="right_finger_joint"
+      multiplier="0.81"
+      offset="0.0"/>
+  </joint>
+
+
+  <!-- ========================================================= -->
+  <!-- LEFT FINGER -->
+  <!-- ========================================================= -->
+
+  <link name="left_finger">
+    <visual>
+      <origin
+        xyz="-0.002620 0.292298 -0.199839"
+        rpy="0 0 0"/>
+
+      <geometry>
+        <mesh
+          filename="package://robot_arm_description/meshes/left_finger.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+
+      <material name="mat_left_finger">
+        <color rgba="0.20 0.85 0.65 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+
+  <!-- Actual upper pivot of left finger -->
+
+  <joint name="left_finger_joint" type="revolute">
+    <parent link="link_5"/>
+    <child link="left_finger"/>
+
+    <origin
+      xyz="-0.005981 -0.068816 -0.001500"
+      rpy="0 0 0"/>
+
+    <axis xyz="0 0 1"/>
+
+    <limit
+      lower="-0.8"
+      upper="0.8"
+      effort="1.0"
+      velocity="2.0"/>
+  </joint>
+
+
+  <!-- ========================================================= -->
+  <!-- RIGHT FINGER -->
+  <!-- ========================================================= -->
+
+  <link name="right_finger">
+    <visual>
+      <origin
+        xyz="-0.034280 0.292093 -0.202839"
+        rpy="0 0 0"/>
+
+      <geometry>
+        <mesh
+          filename="package://robot_arm_description/meshes/right_finger.stl"
+          scale="0.001 0.001 0.001"/>
+      </geometry>
+
+      <material name="mat_right_finger">
+        <color rgba="0.95 0.45 0.30 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+
+  <!-- Actual upper pivot of right finger -->
+
+  <joint name="right_finger_joint" type="revolute">
+    <parent link="link_5"/>
+    <child link="right_finger"/>
+
+    <origin
+      xyz="0.025679 -0.068611 0.001500"
+      rpy="0 0 0"/>
+
+    <axis xyz="0 0 1"/>
+
+    <limit
+      lower="-0.8"
+      upper="0.8"
+      effort="1.0"
+      velocity="2.0"/>
+
+    <!-- Right finger mirrors left finger -->
+
+    <mimic
+      joint="left_finger_joint"
+      multiplier="-1.0"
+      offset="0.0"/>
+  </joint>
+
+
+</robot>

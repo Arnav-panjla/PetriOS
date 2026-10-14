@@ -1,4 +1,8 @@
-"""Kinematic extension point. Geometry has not been measured."""
+"""Kinematic chain from the arm simulation model.
+
+Link offsets and joint axes are in configs/kinematics.yaml and models/robot.urdf.
+Forward and inverse solvers are not implemented here.
+"""
 
 from __future__ import annotations
 
@@ -17,16 +21,19 @@ class KinematicModel(Protocol):
 
 
 class UncalibratedKinematics:
-    """Placeholder. models/robot.urdf is not a measured kinematic model."""
+    """Geometry is known. The solver is not.
+
+    Read configs/kinematics.yaml for the joint offsets and axes.
+    """
 
     def forward(self, joint_deg: Sequence[float]) -> object:
         raise NotImplementedError(
-            "Forward kinematics needs measured link lengths. "
-            "models/robot.urdf is only a joint-limit placeholder."
+            "Forward kinematics is not implemented. "
+            "Joint offsets and axes are in configs/kinematics.yaml."
         )
 
     def inverse(self, pose: object) -> Sequence[float]:
         raise NotImplementedError(
             "Inverse kinematics is not implemented. "
-            "Use joint-space moves until a measured model exists."
+            "Use the chain in configs/kinematics.yaml to write the equations."
         )

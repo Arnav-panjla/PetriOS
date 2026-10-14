@@ -1,0 +1,117 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="amr_system">
+
+  <!-- ========================================================= -->
+  <!-- SUBSYSTEM INCLUDES                                        -->
+  <!-- ========================================================= -->
+
+  <xacro:include
+    filename="$(find robot_arm_description)/urdf/robot_arm_gazebo.urdf.xacro"/>
+
+  <xacro:include
+    filename="$(find carousel_description)/urdf/carousel_gazebo.urdf.xacro"/>
+
+  <xacro:include
+    filename="$(find camera_housing)/urdf/camera_stand_gazebo.urdf.xacro"/>
+
+
+  <!-- ========================================================= -->
+  <!-- GLOBAL WORLD FRAME                                        -->
+  <!-- ========================================================= -->
+
+  <link name="world"/>
+
+
+  <!-- ========================================================= -->
+  <!-- SCARA ARM                                                 -->
+  <!--                                                             -->
+  <!-- Physical/reference position:                              -->
+  <!-- X =  0.000 m                                              -->
+  <!-- Y =  0.000 m                                              -->
+  <!--                                                             -->
+  <!-- This is the top vertex of the equilateral triangle.       -->
+  <!-- ========================================================= -->
+
+  <joint name="world_to_arm" type="fixed">
+
+    <parent link="world"/>
+    <child link="base_link"/>
+
+    <origin
+      xyz="0.000000 0.000000 0.000000"
+      rpy="0 0 0"/>
+
+  </joint>
+
+
+  <!-- ========================================================= -->
+  <!-- CAROUSEL                                                   -->
+  <!--                                                             -->
+  <!-- Physical/reference position:                              -->
+  <!-- X = +0.200 m                                              -->
+  <!-- Y = -0.3464101615 m                                       -->
+  <!--                                                             -->
+  <!-- Distance from SCARA = 0.400 m                             -->
+  <!-- Distance from camera = 0.400 m                            -->
+  <!-- ========================================================= -->
+
+  <joint name="world_to_carousel" type="fixed">
+
+    <parent link="world"/>
+    <child link="carousel_base_link"/>
+
+    <origin
+      xyz="0.350000  -0.3464101615  0.000000"
+      rpy="0 0 -0.174533"/>
+
+  </joint>
+
+
+  <!-- ========================================================= -->
+  <!-- CAMERA HOUSING                                             -->
+  <!--                                                             -->
+  <!-- Physical/reference position:                              -->
+  <!-- X = -0.200 m                                              -->
+  <!-- Y = -0.3464101615 m                                       -->
+  <!--                                                             -->
+  <!-- The camera housing mesh has an internal XY offset, so the -->
+  <!-- LINK origin is intentionally different from the physical  -->
+  <!-- center.                                                   -->
+  <!--                                                             -->
+  <!-- Camera is rotated +90 degrees about the world Z axis.     -->
+  <!-- ========================================================= -->
+
+  <joint name="world_to_camera" type="fixed">
+
+    <parent link="world"/>
+    <child link="camera_shousing_link"/>
+
+    <origin
+        xyz="-0.061399 -0.5164101615 0.000000"
+        rpy="0 0 -1.57079632679"/>
+
+  </joint>
+
+  <!-- <joint name="world_to_camera" type="fixed">
+
+    <parent link="world"/>
+    <child link="camera_shousing_link"/>
+
+    <origin
+        xyz="-0.280000 -0.4264101615 0.000000"
+        rpy="0 0 -1.57079632679"/>
+
+  </joint> -->
+  <!-- ========================================================= -->
+  <!-- GAZEBO STATIC SYSTEMS                                     -->
+  <!-- ========================================================= -->
+
+  <gazebo reference="carousel_base_link">
+    <static>true</static>
+  </gazebo>
+
+  <gazebo reference="camera_shousing_link">
+    <static>true</static>
+  </gazebo>
+
+</robot>

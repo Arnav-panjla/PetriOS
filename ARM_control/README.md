@@ -15,8 +15,10 @@ The package lives in `ARM_control/robotic-arm`. The ESP32 sketch
 - `src/robot_arm/hardware` talks to the PCA9685, or records pulses in tests.
 - `src/robot_arm/control` is the arm, one joint, and the startup gate.
 - `src/robot_arm/motion` is the shared quintic trajectory.
-- `kinematics`, `vision`, and `simulation` are placeholders. They raise
-  `NotImplementedError`. `models/robot.urdf` is not a measured model.
+- `configs/kinematics.yaml` and `models/robot.urdf` are the arm geometry
+  taken from the simulation URDF. Carousel, camera stand, and dishes are not in them.
+- `kinematics`, `vision`, and `simulation` do not solve poses yet. The geometry
+  file is what inverse kinematics should use.
 
 ## Calibration
 

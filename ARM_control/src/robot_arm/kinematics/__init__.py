@@ -1,5 +1,11 @@
-"""Kinematics placeholders. Imported by future planning code, not by the CLI."""
+"""Arm geometry loaded from the simulation model."""
 
 from robot_arm.kinematics.model import KinematicModel, UncalibratedKinematics
+from robot_arm.kinematics.parameters import JointGeometry, load_positioning_joints
 
-__all__ = ["KinematicModel", "UncalibratedKinematics"]
+__all__ = [
+    "JointGeometry",
+    "KinematicModel",
+    "UncalibratedKinematics",
+    "load_positioning_joints",
+]
