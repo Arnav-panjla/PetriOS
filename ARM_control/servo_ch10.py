@@ -32,11 +32,15 @@ Do not power the servo from Pi pin 2 or pin 4 (5 V). A stall browns out the Pi.
 One-time setup on the Pi
 ------------------------
   sudo raspi-config          # Interface Options -> I2C -> Enable, then reboot
-  sudo apt install -y i2c-tools python3-pip python3-venv
+  sudo apt update
+  sudo apt install -y i2c-tools python3-pip python3-venv \
+      swig python3-dev build-essential liblgpio-dev
   i2cdetect -y 1             # a "40" in the grid means the board answered
 
   python3 -m venv .venv && . .venv/bin/activate
   pip install adafruit-circuitpython-servokit
+  # Pi OS Trixie (Python 3.13) has no lgpio wheel, so pip builds it.
+  # That build needs swig, then liblgpio-dev (linker error: cannot find -llgpio).
 
 Run
 ---
