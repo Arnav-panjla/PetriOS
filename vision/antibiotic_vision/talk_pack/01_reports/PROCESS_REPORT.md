@@ -274,13 +274,117 @@ A separate detector script (`detect_discs_v2.py`) was started so the original Ho
 
 ---
 
+## Phase 11 — Ten new full-dish photos  
+*(12–14 Oct 2026)*
+
+**Folder:** `new_images_for_testing/` — 10 PNGs, mostly about 1700×930, one about 1286×1223. Overhead shots of a whole dish. Printed labels were read later from the binaries and saved as `new_images_pipeline/ground_truth_read.csv` (see F, below). Do not mix those 86-disc scores with the `test1.png` 12/12.
+
+The test1 scripts still write only `test1_binary_discs/`, `test1_aligned/`, `test1_morph/`, `test1_letters_above/`. They do not look at this folder. Stage photos for these ten plates had to be saved on purpose.
+
+### A. Old stock-plate script, unchanged — wrong count
+
+`run_stock_plates.py` pointed at the ten files (source files not edited). Finder is still Hough radii **8–22** (`extract_binary_discs.detect_discs`), then `keep_paper_discs`, which **returns at most 16**.
+
+Every plate printed **discs=16**. That is the cap, not the number of stamps. On these photos a real disc is larger than 22 px, so the cap filled with specks. Gemma then read those specks. Most strings were `TAB 25` or `AM 500`. The run died with a 10-minute timeout on disc 14 of `c37aae2c`. `cc60dda2` and `f46521f1` never started. `results.csv` is written only at the end, so **there is no CSV**. Leftover crops are in `new_images_out/`. They are not the discs.
+
+### B. Full-plate finder — counts the student accepted
+
+`detect_discs_v2.py`: find the dish, scale the disc radius to it, keep paper-like circles inside the dish. Marked photos: `new_images_detect/`. The student looked at the green circles and said they are the discs.
+
+| Photo | Discs | Photo | Discs |
+|-------|------:|-------|------:|
+| `1b55f49e` | 9 | `ae77221d` | 8 |
+| `2764168d` | 13 | `bad635cc` | 9 |
+| `679e0db8` | 7 | `c37aae2c` | 8 |
+| `99de1039` | 9 | `cc60dda2` | 13 |
+| `aae8595e` | 4 | `f46521f1` | 6 |
+
+**86 discs.** These circles are what every later run on this folder uses. The 8–22 Hough finder was not put back.
+
+### C. Same chain as test1, including morph — letters destroyed
+
+On those 86 circles the test1 reading chain was run in memory (binary → method C → open 5×5 ×2 → letters-above → rim strip → Gemma). Only the last image was kept (`new_images_v2/`). The stamps were already broken. That run was stopped.
+
+`save_plate_steps.py` then wrote **every** stage, morph included, to `new_images_steps/<plate>/`:
+
+| Folder | Step |
+|--------|------|
+| `_annotated.png` | green circles |
+| `01_binary/` | crop, white outside the circle, Otsu |
+| `02_aligned/` | method C |
+| `03_morph/` | open 5×5, 2 iterations |
+| `04_letters_above/` | 0° vs 180° on the **morph** image |
+
+Checked on plate `1b55f49e`: `02_aligned/disc_05.png` is still **VA 30** (upside down). `03_morph/disc_05.png` is scraps. `04_letters_above` is those scraps flipped. `disc_04` is **TE 30** before the open and fragments after. The 5×5 open was tuned on the thicker `test1` stamps. On these smaller discs it eats the ink. **Morphology is off for this folder.** The test1 order is unchanged.
+
+### D. Color crops — not the pipeline, rejected
+
+A color cut of each green circle, sent to Gemma with no Otsu, no method C, and no morph (`read_color_discs.py` → `new_images_read/`). On the first plate the model returned `PL 10`, `AMX 10`, `CIP 5`, `TE 30`, `VA 30`, `E 15`, `CXM 30`, `CIP 5`, `CN 10`. Name-to-disc photos are `new_images_read/<plate>/_labeled.png` (a line from the reading to that circle). **The student rejected this.** It was not the pipeline built in September. Do not treat `new_images_read/results.csv` as the method.
+
+### E. Requested run — their chain, morphology off
+
+`run_pipeline_no_morph.py`. Order:
+
+```
+new_images_for_testing/*.png
+  detect_discs_v2
+  extract: crop, white outside circle, Otsu     → 01_binary/
+  method C                                      → 02_aligned/
+  letters-above on that aligned image           → 03_letters_above/
+  rim strip                                     → 04_rim_strip/
+  Gemma 3 4B, original prompt, parse_label      → results.csv
+```
+
+No morphological open. Stage photos for all 10 plates are in `new_images_pipeline/`. **86 rows** in `new_images_pipeline/results.csv`. Finished 14 Oct 2026. `parse_label` still requires 2–4 letters, so a one-letter code is stored raw and the parsed cell is blank (`1b55f49e` disc 06 raw `G1`; `f46521f1` disc 01 raw `P10`, disc 04 raw `E19`). On the first plate the color detour had read that disc as `E 15`. The binary chain did not.
+
+### F. Same discs, aligner also off
+
+`run_pipeline_no_align.py`. Binary, then rim strip, then the same Gemma call. No method C, no letters-above, no morph. Stages: `01_binary/`, `02_rim_strip/`. Output: `new_images_pipeline_no_align/results.csv` (86 rows). Finished 14 Oct 2026, about 47 minutes. On plate `1b55f49e` the raw string for disc 06 is `E 15` (parsed blank, one letter). This is a recorded run, not a replacement of the September order on `test1.png`.
+
+### G. Printed labels, then which run matched them  
+*(14 Oct, after both CSVs existed)*
+
+A person confirming each crop before it is recorded was refused. The reader has to stay unattended. Deleting the aligner on a guess was also refused: it does straighten stamps, and spinning every disc through many angles was refused because a wrong angle can still look like a label. The check is the two finished CSVs against one eye-read list.
+
+Labels were read from `01_binary` (before method C). Sideways stamps were rotated, and stuck glyphs were split, until the letters and the dose were readable. Two doses needed the color crop as well: `2764168d` disc 01 is **CAZ 30** (the 3 is a 3), and `99de1039` disc 05 is **AM 5** with a stray speck beside the 5. That second row is the only medium-confidence label. The file is `new_images_pipeline/ground_truth_read.csv`, 86 rows. It is an eye read in this session, not a lab sheet.
+
+Scored on the **parsed** cell, exact string, not on the raw cell:
+
+| Run | Correct |
+|-----|--------:|
+| Morph off, aligner on | 71 / 86 |
+| Morph off, aligner off | 74 / 86 |
+| Both correct | 69 |
+| Both wrong | 10 |
+
+Aligner off fixed five the aligner had wrecked:
+
+| Plate | Disc | Printed | Aligner on |
+|-------|------|---------|------------|
+| `679e0db8` | 03 | CLI 2 | TO 425 |
+| `679e0db8` | 04 | GEN 10 | GEO 10 |
+| `99de1039` | 02 | CLI 2 | CLI 12 |
+| `cc60dda2` | 10 | FEP 30 | SEP 30 |
+| `f46521f1` | 02 | OX 1 | TAB 250 |
+
+Aligner on alone kept two: `2764168d` disc 04 **OZP 100** (no-align parsed `Z01`), and `c37aae2c` disc 06 **CRO 30**. On that second disc the no-align raw text was already `CRO30`; `parse_label` dropped the dose and stored `CRO`.
+
+Both parsed wrong: `1b55f49e` disc 06 **E 15** (aligner `G1`; no-align raw `E 15`, parsed blank); `2764168d` disc 01 **CAZ 30** (`CAZ 39` / `CAZ 88`) and disc 08 **TOC 30** (`OC` / `TO 30`); `679e0db8` disc 01 **P 10** (`PA 10` both) and disc 02 **OX 1** (`X1O` / `OX 100`); `99de1039` disc 05 **AM 5** (`AM 500` / `AMP 25`); `f46521f1` disc 01 **P 10** (both raw `P10`, parsed blank), disc 03 **CAZ 30** (`PA 300` / `BA 24`), disc 04 **E 15** (`E19` / `E 18`), disc 06 **TE 30** (`DE 56` / `7E 50`).
+
+`parse_label` still requires 2–4 letters, so a correct raw `E 15` or `P10` never becomes the stored answer. Do not mix 71/86 or 74/86 with the test1 12/12.
+
+---
+
 ## What actually worked (say this out loud)
 
 1. **Finding discs** on a clean plate photo: Hough circles + Otsu. Fragile across cameras.  
 2. **Making rows horizontal:** method C (two-line centroids), **frozen PNG**.  
 3. **Upright vs upside-down:** letters above, digits below, **after** morph open 5×5 ×2.  
 4. **Reading tiny grey crops (deleted set):** dense **15° search + Otsu + EasyOCR**. Did **not** transfer to 1-bit plate stamps.  
-5. **Reading 1-bit plate stamps on `test1.png`:** **local Gemma 3 4B** at **native** size, **rim blobs stripped**, fake dose dropped when the extra row is specks.
+5. **Reading 1-bit plate stamps on `test1.png`:** **local Gemma 3 4B** at **native** size, **rim blobs stripped**, fake dose dropped when the extra row is specks.  
+6. **Finding discs on the ten new dishes:** `detect_discs_v2` (student-checked green circles, 86 discs). The 8–22 Hough finder fills a cap of 16 with specks.  
+7. **Open 5×5 ×2 on those new stamps:** ruins the letters. VA 30 and TE 30 are intact after method C and gone after the open. Morph stays in the test1 order. It is **off** for `new_images_for_testing`.  
+8. **Method C on those 86, scored on the parsed cell:** 71/86 with it, 74/86 without it. It uniquely kept OZP 100. It uniquely wrecked CLI 2, GEN 10, CLI 2, FEP 30, and OX 1. Ten discs are wrong either way.
 
 Classical one-shot deskew **cannot** be trusted on 5–7 character stamps. Classical OCR **cannot** be trusted on these thick binary glyphs. A VLM still **hallucinates** if you over-zoom or leave a rim that looks like a letter.
 
@@ -290,16 +394,19 @@ Classical one-shot deskew **cannot** be trusted on 5–7 character stamps. Class
 
 - No antibiotic-**name** dictionary as the reader.  
 - Do not re-run k-means for C.  
-- Order: C → morph → letters-above, not letters-above on raw C.  
+- Order on `test1.png`: C → morph → letters-above, not letters-above on raw C.  
+- On the ten new dishes the student turned **morph off** (14 Oct). That does not rewrite the test1 order.  
+- Do not replace that pipeline with a color-crop reader unless the student asks.  
 - Prefer not to train a custom net for the BTP “method.”
 
 ---
 
 ## Open items (honest)
 
-- There is still **no single `run_plate.py`** from an arbitrary petri photo.  
-- Hough must be **retuned** per plate; stock plates showed miss/false-circle rates.  
-- Independent ground truth; **n = 12 is not 99.9%**.  
+- `run_pipeline_no_morph.py` runs the ten new dishes and saves every stage. It is not a general `run_plate.py` for an arbitrary photo.  
+- Hough radii 8–22 still do not transfer. On these ten photos they hit the 16-disc cap. `detect_discs_v2` is the finder the student accepted here.  
+- Stage photos for the ten plates are in `new_images_pipeline/` (morph off, aligner on), `new_images_pipeline_no_align/` (both off), and `new_images_steps/` (morph on, letters ruined). `test1_*` folders are still only `test1.png`.  
+- Eye-read labels for the 86 new discs are in `new_images_pipeline/ground_truth_read.csv`. Not a lab sheet. **n = 12** on test1, and **71/86 or 74/86** here, are not 99.9%.  
 - SXT dashed rim; Hausdorff is optional and weak.  
 - Pi 5 latency not measured here; Gemma 12B on 3060 if 4B fails new plates.  
 - Crop-era vote-margin reject gate was never wired to Gemma.  
@@ -309,4 +416,4 @@ Classical one-shot deskew **cannot** be trusted on 5–7 character stamps. Class
 
 ## One paragraph for a talk or thesis
 
-We started from Gonzalez & Woods pixel operations on two disc crops. Those only made pictures, so we added OCR. Tesseract failed; EasyOCR worked only after the stamp was **cropped and upright**. One-shot geometry (PCA, Hough, projection, templates, gradient histograms) **cannot** find the baseline of a 5–7 character stamp. A **dense 15° search** plus Otsu/EasyOCR **did** read a **pre-cropped grey** set of 12, but that recipe **did not** transfer to Hough-extracted **1-bit** stamps from a full plate. On `test1.png` we split the job: CV **finds and uprights** (Hough, method C, morph, letters-above); Tesseract, EasyOCR, RapidOCR, and Hausdorff still failed on the thick binary font. **Local Gemma 3 4B** read all 12 after we stopped 896 nearest-neighbour zoom (which swapped T/Z) and **deleted leftover rim blobs without cropping letters**. That 12/12 is **one plate**, **offline after model download**, and **not** a single-click product from an arbitrary dish photograph.
+We started from Gonzalez & Woods pixel operations on two disc crops. Those only made pictures, so we added OCR. Tesseract failed; EasyOCR worked only after the stamp was **cropped and upright**. One-shot geometry (PCA, Hough, projection, templates, gradient histograms) **cannot** find the baseline of a 5–7 character stamp. A **dense 15° search** plus Otsu/EasyOCR **did** read a **pre-cropped grey** set of 12, but that recipe **did not** transfer to Hough-extracted **1-bit** stamps from a full plate. On `test1.png` we split the job: CV **finds and uprights** (Hough, method C, morph, letters-above); Tesseract, EasyOCR, RapidOCR, and Hausdorff still failed on the thick binary font. **Local Gemma 3 4B** read all 12 after we stopped 896 nearest-neighbour zoom (which swapped T/Z) and **deleted leftover rim blobs without cropping letters**. That 12/12 is **one plate**, **offline after model download**, and **not** a single-click product from an arbitrary dish photograph. On ten later full-dish photos the old 8–22 circle finder reported 16 discs on every plate (its own cap). A dish-scaled finder matched the stamps the student could see (86 discs). The same 5×5 morphological open that was kept for `test1` then destroyed those smaller letters, so the requested run is the September chain with that open turned off, and every stage is saved under `new_images_pipeline/`. A color-crop reader was tried and rejected: it was not the pipeline. With morphology off, method C scored **71/86** and no rotation scored **74/86** against an eye-read list of the same 86 stamps. Ten were wrong either way, and a one-letter code is still dropped by the parser.

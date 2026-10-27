@@ -153,6 +153,8 @@ What else was scored on `test1.png`, so the 12/12 has a denominator:
 
 An earlier 12/12 used a different set of tiny grey crops and a 15° EasyOCR search. That recipe did not transfer to these 1-bit stamps. The two scores are different experiments. Hough radii are tuned to `test1.png`; on other photographs the miss is the detector. There is no single `run_plate.py` yet. The full narrative is [`vision/antibiotic_vision/PROCESS_REPORT.md`](vision/antibiotic_vision/PROCESS_REPORT.md). Slide images live in [`vision/antibiotic_vision/talk_pack/`](vision/antibiotic_vision/talk_pack/).
 
+Ten later full-dish photos (86 discs) are a third experiment. `detect_discs_v2.py` located the stamps. On those stamps the 5×5 open breaks letters that were intact after alignment, so the open is off for that folder. Method C scores **71/86** with it and **74/86** without it. Photos, CSVs, and the two runners are under [`vision/antibiotic_vision/`](vision/antibiotic_vision/). The TE 30 and VA 30 before/after of the open is in `new_images_steps/`.
+
 ## The bottleneck
 
 Village sampling feeds a central lab. The lab work that does not scale is moving dishes, imaging them, and logging what was on the plate.
@@ -273,8 +275,8 @@ From the revised review, with the disc reader updated to the result already in `
 
 | | |
 |--|--|
-| Done | Scale and system definition. Initial CAD layout (not stored in git). Dish and zone detector. Disc-code pipeline at 12/12 on `test1.png`. Gazebo clip of the arm and carousel. |
-| Now | 6-DOF arm integration. Camera-on-gripper mount. Retuning disc detection beyond one plate. |
+| Done | Scale and system definition. Initial CAD layout (not stored in git). Dish and zone detector. Disc-code pipeline at 12/12 on `test1.png`. Ten later plates scored with the open off (71/86 with method C, 74/86 without). Gazebo clip of the arm and carousel. |
+| Now | 6-DOF arm integration. Camera-on-gripper mount. |
 | Next | Check the URDF into the repo. Link-length change and torque check. Closed-loop pick-and-place. Throughput against ~100 dishes/day. |
 
 ## License

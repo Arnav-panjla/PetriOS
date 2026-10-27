@@ -1,0 +1,87 @@
+plate,disc,flip,raw,parsed,crop
+1b55f49e-6edd-4598-ba15-222256f0cdd7,disc_01,180,PL 10,PL 10,new_images_pipeline\1b55f49e-6edd-4598-ba15-222256f0cdd7\04_rim_strip\disc_01.png
+1b55f49e-6edd-4598-ba15-222256f0cdd7,disc_02,0,AMX 10,AMX 10,new_images_pipeline\1b55f49e-6edd-4598-ba15-222256f0cdd7\04_rim_strip\disc_02.png
+1b55f49e-6edd-4598-ba15-222256f0cdd7,disc_03,0,CIP 5,CIP 5,new_images_pipeline\1b55f49e-6edd-4598-ba15-222256f0cdd7\04_rim_strip\disc_03.png
+1b55f49e-6edd-4598-ba15-222256f0cdd7,disc_04,180,TE 30,TE 30,new_images_pipeline\1b55f49e-6edd-4598-ba15-222256f0cdd7\04_rim_strip\disc_04.png
+1b55f49e-6edd-4598-ba15-222256f0cdd7,disc_05,180,VA 30,VA 30,new_images_pipeline\1b55f49e-6edd-4598-ba15-222256f0cdd7\04_rim_strip\disc_05.png
+1b55f49e-6edd-4598-ba15-222256f0cdd7,disc_06,0,G1,,new_images_pipeline\1b55f49e-6edd-4598-ba15-222256f0cdd7\04_rim_strip\disc_06.png
+1b55f49e-6edd-4598-ba15-222256f0cdd7,disc_07,180,CXM 30,CXM 30,new_images_pipeline\1b55f49e-6edd-4598-ba15-222256f0cdd7\04_rim_strip\disc_07.png
+1b55f49e-6edd-4598-ba15-222256f0cdd7,disc_08,0,CIP 5,CIP 5,new_images_pipeline\1b55f49e-6edd-4598-ba15-222256f0cdd7\04_rim_strip\disc_08.png
+1b55f49e-6edd-4598-ba15-222256f0cdd7,disc_09,0,CN 10,CN 10,new_images_pipeline\1b55f49e-6edd-4598-ba15-222256f0cdd7\04_rim_strip\disc_09.png
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,disc_01,180,CAZ 39,CAZ 39,new_images_pipeline\2764168d-5d55-4ae8-b5c0-ca756b0254a9\04_rim_strip\disc_01.png
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,disc_02,0,COL 10,COL 10,new_images_pipeline\2764168d-5d55-4ae8-b5c0-ca756b0254a9\04_rim_strip\disc_02.png
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,disc_03,0,TE30,TE 30,new_images_pipeline\2764168d-5d55-4ae8-b5c0-ca756b0254a9\04_rim_strip\disc_03.png
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,disc_04,0,OZP 100,OZP 100,new_images_pipeline\2764168d-5d55-4ae8-b5c0-ca756b0254a9\04_rim_strip\disc_04.png
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,disc_05,0,ATM30,ATM 30,new_images_pipeline\2764168d-5d55-4ae8-b5c0-ca756b0254a9\04_rim_strip\disc_05.png
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,disc_06,0,FEP 30,FEP 30,new_images_pipeline\2764168d-5d55-4ae8-b5c0-ca756b0254a9\04_rim_strip\disc_06.png
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,disc_07,0,AMK30,AMK 30,new_images_pipeline\2764168d-5d55-4ae8-b5c0-ca756b0254a9\04_rim_strip\disc_07.png
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,disc_08,0,30 OC,OC,new_images_pipeline\2764168d-5d55-4ae8-b5c0-ca756b0254a9\04_rim_strip\disc_08.png
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,disc_09,0,MEM 10,MEM 10,new_images_pipeline\2764168d-5d55-4ae8-b5c0-ca756b0254a9\04_rim_strip\disc_09.png
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,disc_10,0,FEP 30,FEP 30,new_images_pipeline\2764168d-5d55-4ae8-b5c0-ca756b0254a9\04_rim_strip\disc_10.png
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,disc_11,0,MEN30,MEN 30,new_images_pipeline\2764168d-5d55-4ae8-b5c0-ca756b0254a9\04_rim_strip\disc_11.png
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,disc_12,0,TOB 10,TOB 10,new_images_pipeline\2764168d-5d55-4ae8-b5c0-ca756b0254a9\04_rim_strip\disc_12.png
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,disc_13,0,CIP 5,CIP 5,new_images_pipeline\2764168d-5d55-4ae8-b5c0-ca756b0254a9\04_rim_strip\disc_13.png
+679e0db8-9532-4589-a219-4c2eb3a00a0b,disc_01,0,PA10,PA 10,new_images_pipeline\679e0db8-9532-4589-a219-4c2eb3a00a0b\04_rim_strip\disc_01.png
+679e0db8-9532-4589-a219-4c2eb3a00a0b,disc_02,0,X1O,,new_images_pipeline\679e0db8-9532-4589-a219-4c2eb3a00a0b\04_rim_strip\disc_02.png
+679e0db8-9532-4589-a219-4c2eb3a00a0b,disc_03,0,2 to 4  250,TO 425,new_images_pipeline\679e0db8-9532-4589-a219-4c2eb3a00a0b\04_rim_strip\disc_03.png
+679e0db8-9532-4589-a219-4c2eb3a00a0b,disc_04,0,GEO10,GEO 10,new_images_pipeline\679e0db8-9532-4589-a219-4c2eb3a00a0b\04_rim_strip\disc_04.png
+679e0db8-9532-4589-a219-4c2eb3a00a0b,disc_05,180,VA 30,VA 30,new_images_pipeline\679e0db8-9532-4589-a219-4c2eb3a00a0b\04_rim_strip\disc_05.png
+679e0db8-9532-4589-a219-4c2eb3a00a0b,disc_06,0,CEF 30,CEF 30,new_images_pipeline\679e0db8-9532-4589-a219-4c2eb3a00a0b\04_rim_strip\disc_06.png
+679e0db8-9532-4589-a219-4c2eb3a00a0b,disc_07,0,ERY 15,ERY 15,new_images_pipeline\679e0db8-9532-4589-a219-4c2eb3a00a0b\04_rim_strip\disc_07.png
+99de1039-2c48-4e85-a8c2-6d75fd88ff79,disc_01,180,AMX 10,AMX 10,new_images_pipeline\99de1039-2c48-4e85-a8c2-6d75fd88ff79\04_rim_strip\disc_01.png
+99de1039-2c48-4e85-a8c2-6d75fd88ff79,disc_02,180,CLI 12,CLI 12,new_images_pipeline\99de1039-2c48-4e85-a8c2-6d75fd88ff79\04_rim_strip\disc_02.png
+99de1039-2c48-4e85-a8c2-6d75fd88ff79,disc_03,0,CIP5,CIP 5,new_images_pipeline\99de1039-2c48-4e85-a8c2-6d75fd88ff79\04_rim_strip\disc_03.png
+99de1039-2c48-4e85-a8c2-6d75fd88ff79,disc_04,0,RIF 5,RIF 5,new_images_pipeline\99de1039-2c48-4e85-a8c2-6d75fd88ff79\04_rim_strip\disc_04.png
+99de1039-2c48-4e85-a8c2-6d75fd88ff79,disc_05,0,AM 500,AM 500,new_images_pipeline\99de1039-2c48-4e85-a8c2-6d75fd88ff79\04_rim_strip\disc_05.png
+99de1039-2c48-4e85-a8c2-6d75fd88ff79,disc_06,180,CTX 30,CTX 30,new_images_pipeline\99de1039-2c48-4e85-a8c2-6d75fd88ff79\04_rim_strip\disc_06.png
+99de1039-2c48-4e85-a8c2-6d75fd88ff79,disc_07,180,TE 30,TE 30,new_images_pipeline\99de1039-2c48-4e85-a8c2-6d75fd88ff79\04_rim_strip\disc_07.png
+99de1039-2c48-4e85-a8c2-6d75fd88ff79,disc_08,180,ATM30,ATM 30,new_images_pipeline\99de1039-2c48-4e85-a8c2-6d75fd88ff79\04_rim_strip\disc_08.png
+99de1039-2c48-4e85-a8c2-6d75fd88ff79,disc_09,0,ERY 15,ERY 15,new_images_pipeline\99de1039-2c48-4e85-a8c2-6d75fd88ff79\04_rim_strip\disc_09.png
+aae8595e-d3d4-4528-b901-191ecfa11cbe,disc_01,180,ATM30,ATM 30,new_images_pipeline\aae8595e-d3d4-4528-b901-191ecfa11cbe\04_rim_strip\disc_01.png
+aae8595e-d3d4-4528-b901-191ecfa11cbe,disc_02,180,CIP5,CIP 5,new_images_pipeline\aae8595e-d3d4-4528-b901-191ecfa11cbe\04_rim_strip\disc_02.png
+aae8595e-d3d4-4528-b901-191ecfa11cbe,disc_03,180,TE 30,TE 30,new_images_pipeline\aae8595e-d3d4-4528-b901-191ecfa11cbe\04_rim_strip\disc_03.png
+aae8595e-d3d4-4528-b901-191ecfa11cbe,disc_04,0,GEN 10,GEN 10,new_images_pipeline\aae8595e-d3d4-4528-b901-191ecfa11cbe\04_rim_strip\disc_04.png
+ae77221d-8c57-485b-b4e5-badd243cc0d7,disc_01,180,CAZ 30,CAZ 30,new_images_pipeline\ae77221d-8c57-485b-b4e5-badd243cc0d7\04_rim_strip\disc_01.png
+ae77221d-8c57-485b-b4e5-badd243cc0d7,disc_02,0,TMP 5,TMP 5,new_images_pipeline\ae77221d-8c57-485b-b4e5-badd243cc0d7\04_rim_strip\disc_02.png
+ae77221d-8c57-485b-b4e5-badd243cc0d7,disc_03,0,FEP30,FEP 30,new_images_pipeline\ae77221d-8c57-485b-b4e5-badd243cc0d7\04_rim_strip\disc_03.png
+ae77221d-8c57-485b-b4e5-badd243cc0d7,disc_04,180,MER 10,MER 10,new_images_pipeline\ae77221d-8c57-485b-b4e5-badd243cc0d7\04_rim_strip\disc_04.png
+ae77221d-8c57-485b-b4e5-badd243cc0d7,disc_05,180,AMK 30,AMK 30,new_images_pipeline\ae77221d-8c57-485b-b4e5-badd243cc0d7\04_rim_strip\disc_05.png
+ae77221d-8c57-485b-b4e5-badd243cc0d7,disc_06,180,TET30,TET 30,new_images_pipeline\ae77221d-8c57-485b-b4e5-badd243cc0d7\04_rim_strip\disc_06.png
+ae77221d-8c57-485b-b4e5-badd243cc0d7,disc_07,0,GEN 10,GEN 10,new_images_pipeline\ae77221d-8c57-485b-b4e5-badd243cc0d7\04_rim_strip\disc_07.png
+ae77221d-8c57-485b-b4e5-badd243cc0d7,disc_08,0,CIP 5,CIP 5,new_images_pipeline\ae77221d-8c57-485b-b4e5-badd243cc0d7\04_rim_strip\disc_08.png
+bad635cc-b857-4347-8393-52cdc5a50174,disc_01,0,CTX 5,CTX 5,new_images_pipeline\bad635cc-b857-4347-8393-52cdc5a50174\04_rim_strip\disc_01.png
+bad635cc-b857-4347-8393-52cdc5a50174,disc_02,0,CIP 5,CIP 5,new_images_pipeline\bad635cc-b857-4347-8393-52cdc5a50174\04_rim_strip\disc_02.png
+bad635cc-b857-4347-8393-52cdc5a50174,disc_03,0,CAZ 30,CAZ 30,new_images_pipeline\bad635cc-b857-4347-8393-52cdc5a50174\04_rim_strip\disc_03.png
+bad635cc-b857-4347-8393-52cdc5a50174,disc_04,0,ATM30,ATM 30,new_images_pipeline\bad635cc-b857-4347-8393-52cdc5a50174\04_rim_strip\disc_04.png
+bad635cc-b857-4347-8393-52cdc5a50174,disc_05,0,SXT 25,SXT 25,new_images_pipeline\bad635cc-b857-4347-8393-52cdc5a50174\04_rim_strip\disc_05.png
+bad635cc-b857-4347-8393-52cdc5a50174,disc_06,0,AMC30,AMC 30,new_images_pipeline\bad635cc-b857-4347-8393-52cdc5a50174\04_rim_strip\disc_06.png
+bad635cc-b857-4347-8393-52cdc5a50174,disc_07,180,TE30,TE 30,new_images_pipeline\bad635cc-b857-4347-8393-52cdc5a50174\04_rim_strip\disc_07.png
+bad635cc-b857-4347-8393-52cdc5a50174,disc_08,180,GEN 10,GEN 10,new_images_pipeline\bad635cc-b857-4347-8393-52cdc5a50174\04_rim_strip\disc_08.png
+bad635cc-b857-4347-8393-52cdc5a50174,disc_09,0,FEP 10,FEP 10,new_images_pipeline\bad635cc-b857-4347-8393-52cdc5a50174\04_rim_strip\disc_09.png
+c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0,disc_01,0,CTX 5,CTX 5,new_images_pipeline\c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0\04_rim_strip\disc_01.png
+c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0,disc_02,0,TMP 5,TMP 5,new_images_pipeline\c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0\04_rim_strip\disc_02.png
+c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0,disc_03,0,AMC30,AMC 30,new_images_pipeline\c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0\04_rim_strip\disc_03.png
+c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0,disc_04,180,ATM30,ATM 30,new_images_pipeline\c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0\04_rim_strip\disc_04.png
+c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0,disc_05,0,GEN 10,GEN 10,new_images_pipeline\c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0\04_rim_strip\disc_05.png
+c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0,disc_06,0,CRO30,CRO 30,new_images_pipeline\c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0\04_rim_strip\disc_06.png
+c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0,disc_07,0,CIP5,CIP 5,new_images_pipeline\c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0\04_rim_strip\disc_07.png
+c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0,disc_08,0,CRO 30,CRO 30,new_images_pipeline\c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0\04_rim_strip\disc_08.png
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,disc_01,180,COL10,COL 10,new_images_pipeline\cc60dda2-5e31-4884-a0e5-a66fa9c121e4\04_rim_strip\disc_01.png
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,disc_02,0,IPM 10,IPM 10,new_images_pipeline\cc60dda2-5e31-4884-a0e5-a66fa9c121e4\04_rim_strip\disc_02.png
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,disc_03,180,NIT300,NIT 300,new_images_pipeline\cc60dda2-5e31-4884-a0e5-a66fa9c121e4\04_rim_strip\disc_03.png
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,disc_04,0,TZP 100,TZP 100,new_images_pipeline\cc60dda2-5e31-4884-a0e5-a66fa9c121e4\04_rim_strip\disc_04.png
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,disc_05,0,ATM30,ATM 30,new_images_pipeline\cc60dda2-5e31-4884-a0e5-a66fa9c121e4\04_rim_strip\disc_05.png
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,disc_06,0,FEP30,FEP 30,new_images_pipeline\cc60dda2-5e31-4884-a0e5-a66fa9c121e4\04_rim_strip\disc_06.png
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,disc_07,0,TOC30,TOC 30,new_images_pipeline\cc60dda2-5e31-4884-a0e5-a66fa9c121e4\04_rim_strip\disc_07.png
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,disc_08,0,AMK 30,AMK 30,new_images_pipeline\cc60dda2-5e31-4884-a0e5-a66fa9c121e4\04_rim_strip\disc_08.png
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,disc_09,0,SXT 25,SXT 25,new_images_pipeline\cc60dda2-5e31-4884-a0e5-a66fa9c121e4\04_rim_strip\disc_09.png
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,disc_10,0,SEP30,SEP 30,new_images_pipeline\cc60dda2-5e31-4884-a0e5-a66fa9c121e4\04_rim_strip\disc_10.png
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,disc_11,0,TGC 15,TGC 15,new_images_pipeline\cc60dda2-5e31-4884-a0e5-a66fa9c121e4\04_rim_strip\disc_11.png
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,disc_12,0,AMK30,AMK 30,new_images_pipeline\cc60dda2-5e31-4884-a0e5-a66fa9c121e4\04_rim_strip\disc_12.png
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,disc_13,0,CHL30,CHL 30,new_images_pipeline\cc60dda2-5e31-4884-a0e5-a66fa9c121e4\04_rim_strip\disc_13.png
+f46521f1-8598-4ff4-8f8b-e08f1fbf388f,disc_01,180,P10,,new_images_pipeline\f46521f1-8598-4ff4-8f8b-e08f1fbf388f\04_rim_strip\disc_01.png
+f46521f1-8598-4ff4-8f8b-e08f1fbf388f,disc_02,180,TAB 250,TAB 250,new_images_pipeline\f46521f1-8598-4ff4-8f8b-e08f1fbf388f\04_rim_strip\disc_02.png
+f46521f1-8598-4ff4-8f8b-e08f1fbf388f,disc_03,180,PA 300,PA 300,new_images_pipeline\f46521f1-8598-4ff4-8f8b-e08f1fbf388f\04_rim_strip\disc_03.png
+f46521f1-8598-4ff4-8f8b-e08f1fbf388f,disc_04,180,E19,,new_images_pipeline\f46521f1-8598-4ff4-8f8b-e08f1fbf388f\04_rim_strip\disc_04.png
+f46521f1-8598-4ff4-8f8b-e08f1fbf388f,disc_05,0,CN 10,CN 10,new_images_pipeline\f46521f1-8598-4ff4-8f8b-e08f1fbf388f\04_rim_strip\disc_05.png
+f46521f1-8598-4ff4-8f8b-e08f1fbf388f,disc_06,180,DE 56,DE 56,new_images_pipeline\f46521f1-8598-4ff4-8f8b-e08f1fbf388f\04_rim_strip\disc_06.png

@@ -1,0 +1,88 @@
+plate,disc,truth,confidence,note
+1b55f49e-6edd-4598-ba15-222256f0cdd7,01,PL 10,high,
+1b55f49e-6edd-4598-ba15-222256f0cdd7,02,AMX 10,high,
+1b55f49e-6edd-4598-ba15-222256f0cdd7,03,CIP 5,high,
+1b55f49e-6edd-4598-ba15-222256f0cdd7,04,TE 30,high,
+1b55f49e-6edd-4598-ba15-222256f0cdd7,05,VA 30,high,
+1b55f49e-6edd-4598-ba15-222256f0cdd7,06,E 15,high,one letter E over 15
+1b55f49e-6edd-4598-ba15-222256f0cdd7,07,CXM 30,high,
+1b55f49e-6edd-4598-ba15-222256f0cdd7,08,CIP 5,high,
+1b55f49e-6edd-4598-ba15-222256f0cdd7,09,CN 10,high,
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,01,CAZ 30,high,dose is 30; the 3 is a 3
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,02,COL 10,high,
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,03,TE 30,high,
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,04,OZP 100,high,
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,05,ATM 30,high,
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,06,FEP 30,high,
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,07,AMK 30,high,
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,08,TOC 30,high,letters T O C over 3 0
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,09,MEM 10,high,
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,10,FEP 30,high,
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,11,MEN 30,high,middle letter is E
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,12,TOB 10,high,
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,13,CIP 5,high,
+679e0db8-9532-4589-a219-4c2eb3a00a0b,01,P 10,high,one letter P
+679e0db8-9532-4589-a219-4c2eb3a00a0b,02,OX 1,high,one digit
+679e0db8-9532-4589-a219-4c2eb3a00a0b,03,CLI 2,high,one digit
+679e0db8-9532-4589-a219-4c2eb3a00a0b,04,GEN 10,high,third letter is N
+679e0db8-9532-4589-a219-4c2eb3a00a0b,05,VA 30,high,
+679e0db8-9532-4589-a219-4c2eb3a00a0b,06,CEF 30,high,
+679e0db8-9532-4589-a219-4c2eb3a00a0b,07,ERY 15,high,
+99de1039-2c48-4e85-a8c2-6d75fd88ff79,01,AMX 10,high,
+99de1039-2c48-4e85-a8c2-6d75fd88ff79,02,CLI 2,high,one digit; a second digit is not printed
+99de1039-2c48-4e85-a8c2-6d75fd88ff79,03,CIP 5,high,
+99de1039-2c48-4e85-a8c2-6d75fd88ff79,04,RIF 5,high,
+99de1039-2c48-4e85-a8c2-6d75fd88ff79,05,AM 5,medium,letters AM and a single 5; a stray speck sits beside the 5 and is not a digit
+99de1039-2c48-4e85-a8c2-6d75fd88ff79,06,CTX 30,high,
+99de1039-2c48-4e85-a8c2-6d75fd88ff79,07,TE 30,high,
+99de1039-2c48-4e85-a8c2-6d75fd88ff79,08,ATM 30,high,
+99de1039-2c48-4e85-a8c2-6d75fd88ff79,09,ERY 15,high,
+aae8595e-d3d4-4528-b901-191ecfa11cbe,01,ATM 30,high,
+aae8595e-d3d4-4528-b901-191ecfa11cbe,02,CIP 5,high,
+aae8595e-d3d4-4528-b901-191ecfa11cbe,03,TE 30,high,
+aae8595e-d3d4-4528-b901-191ecfa11cbe,04,GEN 10,high,
+ae77221d-8c57-485b-b4e5-badd243cc0d7,01,CAZ 30,high,
+ae77221d-8c57-485b-b4e5-badd243cc0d7,02,TMP 5,high,
+ae77221d-8c57-485b-b4e5-badd243cc0d7,03,FEP 30,high,
+ae77221d-8c57-485b-b4e5-badd243cc0d7,04,MER 10,high,printed MER
+ae77221d-8c57-485b-b4e5-badd243cc0d7,05,AMK 30,high,
+ae77221d-8c57-485b-b4e5-badd243cc0d7,06,TET 30,high,
+ae77221d-8c57-485b-b4e5-badd243cc0d7,07,GEN 10,high,
+ae77221d-8c57-485b-b4e5-badd243cc0d7,08,CIP 5,high,
+bad635cc-b857-4347-8393-52cdc5a50174,01,CTX 5,high,
+bad635cc-b857-4347-8393-52cdc5a50174,02,CIP 5,high,
+bad635cc-b857-4347-8393-52cdc5a50174,03,CAZ 30,high,
+bad635cc-b857-4347-8393-52cdc5a50174,04,ATM 30,high,
+bad635cc-b857-4347-8393-52cdc5a50174,05,SXT 25,high,
+bad635cc-b857-4347-8393-52cdc5a50174,06,AMC 30,high,
+bad635cc-b857-4347-8393-52cdc5a50174,07,TE 30,high,
+bad635cc-b857-4347-8393-52cdc5a50174,08,GEN 10,high,
+bad635cc-b857-4347-8393-52cdc5a50174,09,FEP 10,high,dose printed as 10
+c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0,01,CTX 5,high,
+c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0,02,TMP 5,high,
+c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0,03,AMC 30,high,stray speck left of the 3 is not a digit
+c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0,04,ATM 30,high,
+c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0,05,GEN 10,high,
+c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0,06,CRO 30,high,
+c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0,07,CIP 5,high,
+c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0,08,CRO 30,high,
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,01,COL 10,high,
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,02,IPM 10,high,
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,03,NIT 300,high,
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,04,TZP 100,high,
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,05,ATM 30,high,
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,06,FEP 30,high,
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,07,TOC 30,high,
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,08,AMK 30,high,
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,09,SXT 25,high,
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,10,FEP 30,high,
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,11,TGC 15,high,
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,12,AMK 30,high,
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,13,CHL 30,high,
+f46521f1-8598-4ff4-8f8b-e08f1fbf388f,01,P 10,high,one letter P
+f46521f1-8598-4ff4-8f8b-e08f1fbf388f,02,OX 1,high,one digit
+f46521f1-8598-4ff4-8f8b-e08f1fbf388f,03,CAZ 30,high,
+f46521f1-8598-4ff4-8f8b-e08f1fbf388f,04,E 15,high,one letter E; stray speck beside the 5 is not a digit
+f46521f1-8598-4ff4-8f8b-e08f1fbf388f,05,CN 10,high,stray speck after the 0 is not a digit
+f46521f1-8598-4ff4-8f8b-e08f1fbf388f,06,TE 30,high,stray speck beside the dose is not a digit
+

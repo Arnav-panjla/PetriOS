@@ -1,0 +1,87 @@
+plate,disc,flip,raw,parsed,crop
+1b55f49e-6edd-4598-ba15-222256f0cdd7,disc_01,off,PL 10,PL 10,new_images_pipeline_no_align\1b55f49e-6edd-4598-ba15-222256f0cdd7\02_rim_strip\disc_01.png
+1b55f49e-6edd-4598-ba15-222256f0cdd7,disc_02,off,AMX 10,AMX 10,new_images_pipeline_no_align\1b55f49e-6edd-4598-ba15-222256f0cdd7\02_rim_strip\disc_02.png
+1b55f49e-6edd-4598-ba15-222256f0cdd7,disc_03,off,CIP 5,CIP 5,new_images_pipeline_no_align\1b55f49e-6edd-4598-ba15-222256f0cdd7\02_rim_strip\disc_03.png
+1b55f49e-6edd-4598-ba15-222256f0cdd7,disc_04,off,TE 30,TE 30,new_images_pipeline_no_align\1b55f49e-6edd-4598-ba15-222256f0cdd7\02_rim_strip\disc_04.png
+1b55f49e-6edd-4598-ba15-222256f0cdd7,disc_05,off,VA 30,VA 30,new_images_pipeline_no_align\1b55f49e-6edd-4598-ba15-222256f0cdd7\02_rim_strip\disc_05.png
+1b55f49e-6edd-4598-ba15-222256f0cdd7,disc_06,off,E 15,,new_images_pipeline_no_align\1b55f49e-6edd-4598-ba15-222256f0cdd7\02_rim_strip\disc_06.png
+1b55f49e-6edd-4598-ba15-222256f0cdd7,disc_07,off,CXM 30,CXM 30,new_images_pipeline_no_align\1b55f49e-6edd-4598-ba15-222256f0cdd7\02_rim_strip\disc_07.png
+1b55f49e-6edd-4598-ba15-222256f0cdd7,disc_08,off,CIP 5,CIP 5,new_images_pipeline_no_align\1b55f49e-6edd-4598-ba15-222256f0cdd7\02_rim_strip\disc_08.png
+1b55f49e-6edd-4598-ba15-222256f0cdd7,disc_09,off,CN 10,CN 10,new_images_pipeline_no_align\1b55f49e-6edd-4598-ba15-222256f0cdd7\02_rim_strip\disc_09.png
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,disc_01,off,CAZ 88,CAZ 88,new_images_pipeline_no_align\2764168d-5d55-4ae8-b5c0-ca756b0254a9\02_rim_strip\disc_01.png
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,disc_02,off,COL 10,COL 10,new_images_pipeline_no_align\2764168d-5d55-4ae8-b5c0-ca756b0254a9\02_rim_strip\disc_02.png
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,disc_03,off,TE 30,TE 30,new_images_pipeline_no_align\2764168d-5d55-4ae8-b5c0-ca756b0254a9\02_rim_strip\disc_03.png
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,disc_04,off,Z01,,new_images_pipeline_no_align\2764168d-5d55-4ae8-b5c0-ca756b0254a9\02_rim_strip\disc_04.png
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,disc_05,off,ATM30,ATM 30,new_images_pipeline_no_align\2764168d-5d55-4ae8-b5c0-ca756b0254a9\02_rim_strip\disc_05.png
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,disc_06,off,FEP30,FEP 30,new_images_pipeline_no_align\2764168d-5d55-4ae8-b5c0-ca756b0254a9\02_rim_strip\disc_06.png
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,disc_07,off,AMK 30,AMK 30,new_images_pipeline_no_align\2764168d-5d55-4ae8-b5c0-ca756b0254a9\02_rim_strip\disc_07.png
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,disc_08,off,TO30,TO 30,new_images_pipeline_no_align\2764168d-5d55-4ae8-b5c0-ca756b0254a9\02_rim_strip\disc_08.png
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,disc_09,off,MEM 10,MEM 10,new_images_pipeline_no_align\2764168d-5d55-4ae8-b5c0-ca756b0254a9\02_rim_strip\disc_09.png
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,disc_10,off,FEP 30,FEP 30,new_images_pipeline_no_align\2764168d-5d55-4ae8-b5c0-ca756b0254a9\02_rim_strip\disc_10.png
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,disc_11,off,MEN 30,MEN 30,new_images_pipeline_no_align\2764168d-5d55-4ae8-b5c0-ca756b0254a9\02_rim_strip\disc_11.png
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,disc_12,off,TOB10,TOB 10,new_images_pipeline_no_align\2764168d-5d55-4ae8-b5c0-ca756b0254a9\02_rim_strip\disc_12.png
+2764168d-5d55-4ae8-b5c0-ca756b0254a9,disc_13,off,CIP 5,CIP 5,new_images_pipeline_no_align\2764168d-5d55-4ae8-b5c0-ca756b0254a9\02_rim_strip\disc_13.png
+679e0db8-9532-4589-a219-4c2eb3a00a0b,disc_01,off,PA10,PA 10,new_images_pipeline_no_align\679e0db8-9532-4589-a219-4c2eb3a00a0b\02_rim_strip\disc_01.png
+679e0db8-9532-4589-a219-4c2eb3a00a0b,disc_02,off,OX 100,OX 100,new_images_pipeline_no_align\679e0db8-9532-4589-a219-4c2eb3a00a0b\02_rim_strip\disc_02.png
+679e0db8-9532-4589-a219-4c2eb3a00a0b,disc_03,off,CLI2,CLI 2,new_images_pipeline_no_align\679e0db8-9532-4589-a219-4c2eb3a00a0b\02_rim_strip\disc_03.png
+679e0db8-9532-4589-a219-4c2eb3a00a0b,disc_04,off,GEN 10,GEN 10,new_images_pipeline_no_align\679e0db8-9532-4589-a219-4c2eb3a00a0b\02_rim_strip\disc_04.png
+679e0db8-9532-4589-a219-4c2eb3a00a0b,disc_05,off,VA 30,VA 30,new_images_pipeline_no_align\679e0db8-9532-4589-a219-4c2eb3a00a0b\02_rim_strip\disc_05.png
+679e0db8-9532-4589-a219-4c2eb3a00a0b,disc_06,off,CEF 30,CEF 30,new_images_pipeline_no_align\679e0db8-9532-4589-a219-4c2eb3a00a0b\02_rim_strip\disc_06.png
+679e0db8-9532-4589-a219-4c2eb3a00a0b,disc_07,off,ERY 15,ERY 15,new_images_pipeline_no_align\679e0db8-9532-4589-a219-4c2eb3a00a0b\02_rim_strip\disc_07.png
+99de1039-2c48-4e85-a8c2-6d75fd88ff79,disc_01,off,AMX10,AMX 10,new_images_pipeline_no_align\99de1039-2c48-4e85-a8c2-6d75fd88ff79\02_rim_strip\disc_01.png
+99de1039-2c48-4e85-a8c2-6d75fd88ff79,disc_02,off,CLI2,CLI 2,new_images_pipeline_no_align\99de1039-2c48-4e85-a8c2-6d75fd88ff79\02_rim_strip\disc_02.png
+99de1039-2c48-4e85-a8c2-6d75fd88ff79,disc_03,off,CIP5,CIP 5,new_images_pipeline_no_align\99de1039-2c48-4e85-a8c2-6d75fd88ff79\02_rim_strip\disc_03.png
+99de1039-2c48-4e85-a8c2-6d75fd88ff79,disc_04,off,RIF 5,RIF 5,new_images_pipeline_no_align\99de1039-2c48-4e85-a8c2-6d75fd88ff79\02_rim_strip\disc_04.png
+99de1039-2c48-4e85-a8c2-6d75fd88ff79,disc_05,off,AMP 25,AMP 25,new_images_pipeline_no_align\99de1039-2c48-4e85-a8c2-6d75fd88ff79\02_rim_strip\disc_05.png
+99de1039-2c48-4e85-a8c2-6d75fd88ff79,disc_06,off,CTX 30,CTX 30,new_images_pipeline_no_align\99de1039-2c48-4e85-a8c2-6d75fd88ff79\02_rim_strip\disc_06.png
+99de1039-2c48-4e85-a8c2-6d75fd88ff79,disc_07,off,TE 30,TE 30,new_images_pipeline_no_align\99de1039-2c48-4e85-a8c2-6d75fd88ff79\02_rim_strip\disc_07.png
+99de1039-2c48-4e85-a8c2-6d75fd88ff79,disc_08,off,ATM30,ATM 30,new_images_pipeline_no_align\99de1039-2c48-4e85-a8c2-6d75fd88ff79\02_rim_strip\disc_08.png
+99de1039-2c48-4e85-a8c2-6d75fd88ff79,disc_09,off,ERY 15,ERY 15,new_images_pipeline_no_align\99de1039-2c48-4e85-a8c2-6d75fd88ff79\02_rim_strip\disc_09.png
+aae8595e-d3d4-4528-b901-191ecfa11cbe,disc_01,off,ATM 30,ATM 30,new_images_pipeline_no_align\aae8595e-d3d4-4528-b901-191ecfa11cbe\02_rim_strip\disc_01.png
+aae8595e-d3d4-4528-b901-191ecfa11cbe,disc_02,off,CIP5,CIP 5,new_images_pipeline_no_align\aae8595e-d3d4-4528-b901-191ecfa11cbe\02_rim_strip\disc_02.png
+aae8595e-d3d4-4528-b901-191ecfa11cbe,disc_03,off,TE30,TE 30,new_images_pipeline_no_align\aae8595e-d3d4-4528-b901-191ecfa11cbe\02_rim_strip\disc_03.png
+aae8595e-d3d4-4528-b901-191ecfa11cbe,disc_04,off,GEN 10,GEN 10,new_images_pipeline_no_align\aae8595e-d3d4-4528-b901-191ecfa11cbe\02_rim_strip\disc_04.png
+ae77221d-8c57-485b-b4e5-badd243cc0d7,disc_01,off,CAZ 30,CAZ 30,new_images_pipeline_no_align\ae77221d-8c57-485b-b4e5-badd243cc0d7\02_rim_strip\disc_01.png
+ae77221d-8c57-485b-b4e5-badd243cc0d7,disc_02,off,TMP 5,TMP 5,new_images_pipeline_no_align\ae77221d-8c57-485b-b4e5-badd243cc0d7\02_rim_strip\disc_02.png
+ae77221d-8c57-485b-b4e5-badd243cc0d7,disc_03,off,FEP30,FEP 30,new_images_pipeline_no_align\ae77221d-8c57-485b-b4e5-badd243cc0d7\02_rim_strip\disc_03.png
+ae77221d-8c57-485b-b4e5-badd243cc0d7,disc_04,off,MER 10,MER 10,new_images_pipeline_no_align\ae77221d-8c57-485b-b4e5-badd243cc0d7\02_rim_strip\disc_04.png
+ae77221d-8c57-485b-b4e5-badd243cc0d7,disc_05,off,AMK 30,AMK 30,new_images_pipeline_no_align\ae77221d-8c57-485b-b4e5-badd243cc0d7\02_rim_strip\disc_05.png
+ae77221d-8c57-485b-b4e5-badd243cc0d7,disc_06,off,TET30,TET 30,new_images_pipeline_no_align\ae77221d-8c57-485b-b4e5-badd243cc0d7\02_rim_strip\disc_06.png
+ae77221d-8c57-485b-b4e5-badd243cc0d7,disc_07,off,GEN 10,GEN 10,new_images_pipeline_no_align\ae77221d-8c57-485b-b4e5-badd243cc0d7\02_rim_strip\disc_07.png
+ae77221d-8c57-485b-b4e5-badd243cc0d7,disc_08,off,CIP 5,CIP 5,new_images_pipeline_no_align\ae77221d-8c57-485b-b4e5-badd243cc0d7\02_rim_strip\disc_08.png
+bad635cc-b857-4347-8393-52cdc5a50174,disc_01,off,CTX 5,CTX 5,new_images_pipeline_no_align\bad635cc-b857-4347-8393-52cdc5a50174\02_rim_strip\disc_01.png
+bad635cc-b857-4347-8393-52cdc5a50174,disc_02,off,CIP5,CIP 5,new_images_pipeline_no_align\bad635cc-b857-4347-8393-52cdc5a50174\02_rim_strip\disc_02.png
+bad635cc-b857-4347-8393-52cdc5a50174,disc_03,off,CAZ 30,CAZ 30,new_images_pipeline_no_align\bad635cc-b857-4347-8393-52cdc5a50174\02_rim_strip\disc_03.png
+bad635cc-b857-4347-8393-52cdc5a50174,disc_04,off,ATM30,ATM 30,new_images_pipeline_no_align\bad635cc-b857-4347-8393-52cdc5a50174\02_rim_strip\disc_04.png
+bad635cc-b857-4347-8393-52cdc5a50174,disc_05,off,SXT 25,SXT 25,new_images_pipeline_no_align\bad635cc-b857-4347-8393-52cdc5a50174\02_rim_strip\disc_05.png
+bad635cc-b857-4347-8393-52cdc5a50174,disc_06,off,AMC30,AMC 30,new_images_pipeline_no_align\bad635cc-b857-4347-8393-52cdc5a50174\02_rim_strip\disc_06.png
+bad635cc-b857-4347-8393-52cdc5a50174,disc_07,off,TE 30,TE 30,new_images_pipeline_no_align\bad635cc-b857-4347-8393-52cdc5a50174\02_rim_strip\disc_07.png
+bad635cc-b857-4347-8393-52cdc5a50174,disc_08,off,GEN 10,GEN 10,new_images_pipeline_no_align\bad635cc-b857-4347-8393-52cdc5a50174\02_rim_strip\disc_08.png
+bad635cc-b857-4347-8393-52cdc5a50174,disc_09,off,FEP10,FEP 10,new_images_pipeline_no_align\bad635cc-b857-4347-8393-52cdc5a50174\02_rim_strip\disc_09.png
+c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0,disc_01,off,CTX 5,CTX 5,new_images_pipeline_no_align\c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0\02_rim_strip\disc_01.png
+c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0,disc_02,off,TMP5,TMP 5,new_images_pipeline_no_align\c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0\02_rim_strip\disc_02.png
+c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0,disc_03,off,AMC30,AMC 30,new_images_pipeline_no_align\c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0\02_rim_strip\disc_03.png
+c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0,disc_04,off,ATM30,ATM 30,new_images_pipeline_no_align\c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0\02_rim_strip\disc_04.png
+c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0,disc_05,off,GEN 10,GEN 10,new_images_pipeline_no_align\c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0\02_rim_strip\disc_05.png
+c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0,disc_06,off,CRO30,CRO,new_images_pipeline_no_align\c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0\02_rim_strip\disc_06.png
+c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0,disc_07,off,CIP 5,CIP 5,new_images_pipeline_no_align\c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0\02_rim_strip\disc_07.png
+c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0,disc_08,off,CRO 30,CRO 30,new_images_pipeline_no_align\c37aae2c-38b8-4e9a-b5dd-fb5e4f27a3d0\02_rim_strip\disc_08.png
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,disc_01,off,COL 10,COL 10,new_images_pipeline_no_align\cc60dda2-5e31-4884-a0e5-a66fa9c121e4\02_rim_strip\disc_01.png
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,disc_02,off,IPM10,IPM 10,new_images_pipeline_no_align\cc60dda2-5e31-4884-a0e5-a66fa9c121e4\02_rim_strip\disc_02.png
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,disc_03,off,NIT 300,NIT 300,new_images_pipeline_no_align\cc60dda2-5e31-4884-a0e5-a66fa9c121e4\02_rim_strip\disc_03.png
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,disc_04,off,TZP 100,TZP 100,new_images_pipeline_no_align\cc60dda2-5e31-4884-a0e5-a66fa9c121e4\02_rim_strip\disc_04.png
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,disc_05,off,ATM30,ATM 30,new_images_pipeline_no_align\cc60dda2-5e31-4884-a0e5-a66fa9c121e4\02_rim_strip\disc_05.png
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,disc_06,off,FEP 30,FEP 30,new_images_pipeline_no_align\cc60dda2-5e31-4884-a0e5-a66fa9c121e4\02_rim_strip\disc_06.png
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,disc_07,off,TOC30,TOC 30,new_images_pipeline_no_align\cc60dda2-5e31-4884-a0e5-a66fa9c121e4\02_rim_strip\disc_07.png
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,disc_08,off,AMK 30,AMK 30,new_images_pipeline_no_align\cc60dda2-5e31-4884-a0e5-a66fa9c121e4\02_rim_strip\disc_08.png
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,disc_09,off,SXT 25,SXT 25,new_images_pipeline_no_align\cc60dda2-5e31-4884-a0e5-a66fa9c121e4\02_rim_strip\disc_09.png
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,disc_10,off,FEP30,FEP 30,new_images_pipeline_no_align\cc60dda2-5e31-4884-a0e5-a66fa9c121e4\02_rim_strip\disc_10.png
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,disc_11,off,TGC15,TGC 15,new_images_pipeline_no_align\cc60dda2-5e31-4884-a0e5-a66fa9c121e4\02_rim_strip\disc_11.png
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,disc_12,off,AMK 30,AMK 30,new_images_pipeline_no_align\cc60dda2-5e31-4884-a0e5-a66fa9c121e4\02_rim_strip\disc_12.png
+cc60dda2-5e31-4884-a0e5-a66fa9c121e4,disc_13,off,CHL30,CHL 30,new_images_pipeline_no_align\cc60dda2-5e31-4884-a0e5-a66fa9c121e4\02_rim_strip\disc_13.png
+f46521f1-8598-4ff4-8f8b-e08f1fbf388f,disc_01,off,P10,,new_images_pipeline_no_align\f46521f1-8598-4ff4-8f8b-e08f1fbf388f\02_rim_strip\disc_01.png
+f46521f1-8598-4ff4-8f8b-e08f1fbf388f,disc_02,off,OX1,OX 1,new_images_pipeline_no_align\f46521f1-8598-4ff4-8f8b-e08f1fbf388f\02_rim_strip\disc_02.png
+f46521f1-8598-4ff4-8f8b-e08f1fbf388f,disc_03,off,BA 24,BA 24,new_images_pipeline_no_align\f46521f1-8598-4ff4-8f8b-e08f1fbf388f\02_rim_strip\disc_03.png
+f46521f1-8598-4ff4-8f8b-e08f1fbf388f,disc_04,off,E 18,,new_images_pipeline_no_align\f46521f1-8598-4ff4-8f8b-e08f1fbf388f\02_rim_strip\disc_04.png
+f46521f1-8598-4ff4-8f8b-e08f1fbf388f,disc_05,off,CN10,CN 10,new_images_pipeline_no_align\f46521f1-8598-4ff4-8f8b-e08f1fbf388f\02_rim_strip\disc_05.png
+f46521f1-8598-4ff4-8f8b-e08f1fbf388f,disc_06,off,7E 50,,new_images_pipeline_no_align\f46521f1-8598-4ff4-8f8b-e08f1fbf388f\02_rim_strip\disc_06.png
