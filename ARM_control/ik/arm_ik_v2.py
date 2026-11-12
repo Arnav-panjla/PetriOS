@@ -27,7 +27,7 @@ from scipy.optimize import least_squares
 URDF_ZERO_SERVO = np.array([90., 39., 58., 66.5, 116.25])
 # NEW folded pose supplied by user; starting point of numerical IK.
 START_SERVO = np.array([90.5, 35.5, 58., 151.5, 116.])
-GRIPPER_SERVO = 162.  # separate J5 motor; closed state not yet verified
+GRIPPER_SERVO = 167.5  # separate J5 motor; 167.5 deg fully closed, 10 deg fully open (3.5 cm)
 
 # Provisional physical servo rotation signs relative to URDF joint axes.
 # J0 + (CCW top); J1 + (down); J2 - (up); J3 + (down), J4 - (CCW from gripper).

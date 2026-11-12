@@ -1,5 +1,6 @@
 # Canonical home pose. Pulses are copied from esp32_slider.ino initialPulse[]
 # and from ARM_control/arm_servos.py MOTORS. The program never writes this file.
+# Joint 5 (gripper): home = fully open = 10 deg = 1128 us; 167.5 deg = fully closed.
 # 0 degrees is min_us and 180 degrees is max_us for that joint.
 travel_deg: 180
 joints:
@@ -32,4 +33,4 @@ joints:
     channel: 15
     min_us: 1100
     max_us: 1600
-    home_us: 1239
+    home_us: 1128

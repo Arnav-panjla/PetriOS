@@ -28,6 +28,7 @@ from robot_arm.config import RobotConfig
 from robot_arm.control.arm_controller import STARTUP_WARNING, ArmController
 from robot_arm.hardware.driver import PCA9685Driver
 from robot_arm.utils.errors import RobotArmError
+from robot_arm.vision.esp32_serial import SerialCamera
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +37,15 @@ HOME_FILE = RobotConfig.default_dir() / "home.txt"
 
 # Used only when the IK module cannot be imported. Same values as arm_ik_v2.py
 # (J0-J4) plus the gripper servo, so the model still draws.
-FALLBACK_ZERO = [90.0, 39.0, 58.0, 66.5, 116.25, 162.0]
-FALLBACK_SIGN = [1.0, 1.0, -1.0, 1.0, -1.0, 1.0]
+FALLBACK_ZERO = [90.0, 39.0, 58.0, 66.5, 116.25]
+FALLBACK_SIGN = [1.0, 1.0, -1.0, 1.0, -1.0]
+# Gripper (joint 5), measured: 167.5 deg is fully closed, 10 deg is fully open,
+# and the fully open jaw width is 3.5 cm. Home is the open position.
+GRIPPER_CLOSED_DEG = 167.5
+GRIPPER_OPEN_DEG = 10.0
+GRIPPER_MAX_WIDTH_M = 0.035
+# Allowed servo range per joint (deg).
+LIMITS_DEG = [(0.0, 180.0)] * 5 + [(GRIPPER_OPEN_DEG, GRIPPER_CLOSED_DEG)]
 FALLBACK_TCP = [0.010023, -0.125002, 0.0015]
 
 PAGE = """<!doctype html><html><head><meta charset="utf-8">
@@ -71,10 +79,12 @@ pre{background:#111;border-radius:6px;padding:8px;font-size:12px;white-space:pre
 <div id="layout"><div id="left"><div id="joints"></div></div>
 <div id="right"><canvas id="cv"></canvas>
 <small>Blue = commanded pose, amber = slider target, green = IK solution. Drag to rotate, wheel to zoom.
-Model angle q = sign &times; (servo&deg; &minus; zero), taken from arm_ik_v2.py. Joints 0-4 &rarr; joint_1..5, joint 5 &rarr; gripper.</small>
+Model angle q = sign &times; (servo&deg; &minus; zero), taken from arm_ik_v2.py. Joints 0-4 &rarr; joint_1..5. Gripper (J5): 167.5&deg; closed, 10&deg; open (3.5 cm).</small>
+<div class="row" id="camrow"><b>Gripper camera</b> <small id="camstat"></small><br>
+<img id="cam" alt="camera" style="width:100%;max-height:360px;object-fit:contain;background:#000;border-radius:6px"></div>
 <div class="row" id="ik"><b>Inverse kinematics</b> <small id="ikstat"></small><br>
-<select id="ikmode"><option value="abs">absolute TCP (base_link, m)</option><option value="rel">relative to current TCP (m)</option></select>
-x <input type="number" step="0.005" id="ikx" value="0"> y <input type="number" step="0.005" id="iky" value="0"> z <input type="number" step="0.005" id="ikz" value="0">
+<select id="ikmode"><option value="abs">absolute TCP (base_link, mm)</option><option value="rel">relative to current TCP (mm)</option></select>
+x <input type="number" step="1" id="ikx" value="0"> y <input type="number" step="1" id="iky" value="0"> z <input type="number" step="1" id="ikz" value="0">
 <label><input type="checkbox" id="ikhold"> hold tool direction</label><br>
 <button class="gray" id="ikfill">Fill from current TCP</button>
 <button id="iksolve">Solve (preview only)</button>
@@ -94,8 +104,8 @@ function build(s){
   s.joints.forEach(j=>{
     const d=document.createElement('div'); d.className='row';
     d.innerHTML=`<div class="top"><b>Joint ${j.index}</b><small>ch ${j.channel} | home ${j.home_deg.toFixed(1)}&deg; | ${j.min_us}-${j.max_us} us</small>
-    <span>target <span class="val" id="t${j.index}">${j.commanded_deg.toFixed(1)}</span>&deg; &nbsp; now <span class="val" id="c${j.index}">${j.commanded_deg.toFixed(1)}</span>&deg; &nbsp; q <span class="val" id="q${j.index}">0</span>&deg;</span></div>
-    <input type="range" min="0" max="180" step="0.5" value="${j.commanded_deg}" id="s${j.index}">
+    <span>target <span class="val" id="t${j.index}">${j.commanded_deg.toFixed(1)}</span>&deg; &nbsp; now <span class="val" id="c${j.index}">${j.commanded_deg.toFixed(1)}</span>&deg; &nbsp; ${j.index===5?'opening <span class="val" id="q5">0</span> mm':'q <span class="val" id="q'+j.index+'">0</span>&deg;'}</span></div>
+    <input type="range" min="${j.min_deg}" max="${j.max_deg}" step="0.5" value="${j.commanded_deg}" id="s${j.index}">
     <div><button class="gray" data-h="${j.index}">home</button>
     <button class="gray" data-n="${j.index}" data-d="-1">-1</button><button class="gray" data-n="${j.index}" data-d="1">+1</button></div>`;
     box.appendChild(d);
@@ -104,7 +114,7 @@ function build(s){
     sl.addEventListener('change',()=>queue(j.index,+sl.value,true));
   });
   box.querySelectorAll('[data-h]').forEach(b=>b.onclick=()=>{const i=+b.dataset.h;const v=state.joints[i].home_deg;setSlider(i,v);queue(i,v,true)});
-  box.querySelectorAll('[data-n]').forEach(b=>b.onclick=()=>{const i=+b.dataset.n;const v=Math.min(180,Math.max(0,+sliders[i].value+ +b.dataset.d));setSlider(i,v);queue(i,v,true)});
+  box.querySelectorAll('[data-n]').forEach(b=>b.onclick=()=>{const i=+b.dataset.n;const v=Math.min(state.joints[i].max_deg,Math.max(state.joints[i].min_deg,+sliders[i].value+ +b.dataset.d));setSlider(i,v);queue(i,v,true)});
 }
 function setSlider(i,v){sliders[i].value=v;$('t'+i).textContent=(+v).toFixed(1)}
 function queue(i,v,now){
@@ -122,7 +132,7 @@ async function refresh(){
     const s=await api('/api/status'); const first=!state; state=s;
     $('start').style.display=s.ready?'none':'';
     if(first||s.home_version!==homeVersion){homeVersion=s.home_version;build(s)}
-    s.joints.forEach(j=>{$('c'+j.index).textContent=j.commanded_deg.toFixed(1);$('q'+j.index).textContent=qOf(j.index,j.commanded_deg).toFixed(1)});
+    s.joints.forEach(j=>{$('c'+j.index).textContent=j.commanded_deg.toFixed(1);$('q'+j.index).textContent=(j.index===5?openFrac(j.commanded_deg)*model_w()*1000:qOf(j.index,j.commanded_deg)).toFixed(1)});
     $('homeinfo').textContent='home (servo deg): ['+s.joints.map(j=>j.home_deg.toFixed(1)).join(', ')+']  '+s.home_source;
     if(document.activeElement!==$('soften')&&s.soften_ms!==null)$('soften').value=s.soften_ms;
   }catch(e){msg('connection lost')}
@@ -148,12 +158,17 @@ function T(x,y,z){const m=I();m[12]=x;m[13]=y;m[14]=z;return m}
 function R(ax,q){const[c,s]=[Math.cos(q),Math.sin(q)],[x,y,z]=ax,t=1-c,m=I();
  m[0]=t*x*x+c;m[4]=t*x*y-s*z;m[8]=t*x*z+s*y;m[1]=t*x*y+s*z;m[5]=t*y*y+c;m[9]=t*y*z-s*x;m[2]=t*x*z-s*y;m[6]=t*y*z+s*x;m[10]=t*z*z+c;return m}
 const pt=(m,p=[0,0,0])=>[m[0]*p[0]+m[4]*p[1]+m[8]*p[2]+m[12],m[1]*p[0]+m[5]*p[1]+m[9]*p[2]+m[13],m[2]*p[0]+m[6]*p[1]+m[10]*p[2]+m[14]];
+const GC=__GC__,GO=__GO__,GW=__GW__;
+const openFrac=d=>Math.max(0,Math.min(1,(GC-d)/(GC-GO)));
+const model_w=()=>GW;
 function qOf(i,deg){return SIGN[i]*(deg-ZERO[i])} // model angle in DEGREES
 function fk(degs){
   const qs=degs.map((d,i)=>qOf(i,d));
   let m=I();const frames=[m];
   model.joints.forEach((j,i)=>{m=mul(m,mul(T(...j.xyz),R(j.axis,qs[i]*Math.PI/180)));frames.push(m)});
-  const g=model.gripper,qf=Math.max(-0.8,Math.min(0.8,qs[5]*Math.PI/180));
+  const g=model.gripper,L=0.045,sep0=g.right.xyz[0]-g.left.xyz[0],
+    thC=Math.asin(Math.min(1,sep0/(2*L))),thO=Math.asin((sep0-GW)/(2*L)), // tips meet when closed, GW apart when open
+    qf=thC+openFrac(degs[5])*(thO-thC);
   const wrist=frames[5],fingers=[];
   [[g.left,qf],[g.right,-qf]].forEach(([f,q])=>{
     const fm=mul(wrist,mul(T(...f.xyz),R([0,0,1],q)));
@@ -196,7 +211,7 @@ function draw(){
     }
   });
   cx.fillStyle='#ccc';cx.font='12px monospace';
-  cx.fillText(`TCP (base_link): x ${curTcp[0].toFixed(3)} y ${curTcp[1].toFixed(3)} z ${curTcp[2].toFixed(3)} m`,10,18);
+  cx.fillText(`TCP (base_link): x ${(curTcp[0]*1000).toFixed(1)} y ${(curTcp[1]*1000).toFixed(1)} z ${(curTcp[2]*1000).toFixed(1)} mm`,10,18);
 }
 let drag=null;
 cv.addEventListener('pointerdown',e=>{drag=[e.clientX,e.clientY];cv.setPointerCapture(e.pointerId)});
@@ -205,17 +220,17 @@ cv.addEventListener('pointermove',e=>{if(!drag)return;yaw+=(e.clientX-drag[0])*0
 cv.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(0.3,Math.min(5,zoom*(e.deltaY<0?1.1:0.9)))},{passive:false});
 (function loop(){draw();requestAnimationFrame(loop)})();
 /* ---- IK ---- */
-const f3=a=>'['+a.map(v=>v.toFixed(3)).join(', ')+']';
+const f3=a=>'['+a.map(v=>v.toFixed(3)).join(', ')+']',f1=a=>'['+a.map(v=>v.toFixed(1)).join(', ')+']';
 $('ikfill').onclick=()=>{
   if($('ikmode').value==='rel'){['x','y','z'].forEach(k=>$('ik'+k).value=0);return}
-  const t=fk(state.joints.map(j=>j.commanded_deg)).tcp;['x','y','z'].forEach((k,i)=>$('ik'+k).value=+t[i].toFixed(4));};
+  const t=fk(state.joints.map(j=>j.commanded_deg)).tcp;['x','y','z'].forEach((k,i)=>$('ik'+k).value=+(t[i]*1000).toFixed(1));};
 $('ikmode').onchange=()=>$('ikfill').click();
 $('iksolve').onclick=async()=>{
   $('ikgo').disabled=true;ikPrev=null;$('ikout').textContent='solving...';
   const r=await api('/api/ik/solve',{mode:$('ikmode').value,x:+$('ikx').value,y:+$('iky').value,z:+$('ikz').value,hold:$('ikhold').checked});
   if(r.error){$('ikout').textContent='IK: '+r.error;return}
   ikPrev=r.servo;$('ikgo').disabled=false;
-  $('ikout').textContent=`target TCP ${f3(r.target)} m\\nservo J0-J4 ${f3(r.servo.slice(0,5))} deg\\nchange      ${f3(r.change)} deg\\npulses us   [${r.pulses.join(', ')}]\\nposition error ${r.err_mm.toFixed(3)} mm`+(r.axis_err_deg===null?'':`\\ndirection error ${r.axis_err_deg.toFixed(2)} deg`)+'\\nPreview only: green model. Press "Move arm to solution" to execute.';
+  $('ikout').textContent=`target TCP ${f1(r.target_mm)} mm\\nservo J0-J4 ${f3(r.servo.slice(0,5))} deg\\nchange      ${f3(r.change)} deg\\npulses us   [${r.pulses.join(', ')}]\\nposition error ${r.err_mm.toFixed(3)} mm`+(r.axis_err_deg===null?'':`\\ndirection error ${r.axis_err_deg.toFixed(2)} deg`)+'\\nPreview only: green model. Press "Move arm to solution" to execute.';
 };
 $('ikgo').onclick=async()=>{
   if(!ikPrev||!confirm('Move the real arm to the IK solution? Check for collisions first.'))return;
@@ -224,6 +239,13 @@ $('ikgo').onclick=async()=>{
   if(!r.error){for(let i=0;i<5;i++)setSlider(i,ikPrev[i]);ikPrev=null;$('ikgo').disabled=true}};
 api('/api/model').then(m=>{model=m;$('ikstat').textContent=m.ik_ok?'(arm_ik_v2.py loaded)':'(IK unavailable: '+m.ik_error+')';$('iksolve').disabled=!m.ik_ok});
 refresh();setInterval(refresh,300);
+function camTick(){
+  const c=state&&state.camera;
+  if(!c){$('camstat').textContent='(disabled)';return}
+  if(!$('cam').getAttribute('src'))$('cam').src='/camera.mjpg';
+  $('camstat').textContent=c.connected?`(${c.port||'auto'}, ${c.fps.toFixed(1)} fps)`:'(not connected: '+(c.error||'waiting')+')';
+}
+setInterval(camTick,1000);
 </script></body></html>
 """
 
@@ -251,13 +273,13 @@ class IKBridge:
 
     def zero(self) -> list[float]:
         if not self.ok:
-            return FALLBACK_ZERO
-        return [float(v) for v in self.mod.URDF_ZERO_SERVO] + [float(self.mod.GRIPPER_SERVO)]
+            return FALLBACK_ZERO + [GRIPPER_CLOSED_DEG]
+        return [float(v) for v in self.mod.URDF_ZERO_SERVO] + [GRIPPER_CLOSED_DEG]
 
     def sign(self) -> list[float]:
         if not self.ok:
-            return FALLBACK_SIGN
-        return [float(v) for v in self.mod.SERVO_SIGN] + [1.0]
+            return FALLBACK_SIGN + [-1.0]
+        return [float(v) for v in self.mod.SERVO_SIGN] + [-1.0]
 
     def tcp(self) -> list[float]:
         return [float(v) for v in self.mod.TCP_ESTIMATE] if self.ok else FALLBACK_TCP
@@ -284,7 +306,7 @@ class IKBridge:
                 f"{mod.SOFT_LIMIT_DEG.tolist()}; move the sliders inside them first"
             )
         tcp = np.array(mod.TCP_ESTIMATE)
-        vec = np.array([float(body["x"]), float(body["y"]), float(body["z"])])
+        vec = np.array([float(body["x"]), float(body["y"]), float(body["z"])]) / 1000.0  # mm in
         if body.get("mode") == "rel":
             T0, _ = mod.fk(mod.to_q(start), tcp)
             target = T0[:3, 3] + vec
@@ -295,7 +317,7 @@ class IKBridge:
         servo = mod.to_servo(q)
         pulses = [mod.pwm(i, float(v)) for i, v in enumerate(servo)]
         return {
-            "target": [float(v) for v in target],
+            "target_mm": [float(v) * 1000.0 for v in target],
             "servo": [float(v) for v in servo] + [float(current[5])],
             "change": [float(v) for v in servo - start],
             "pulses": pulses,
@@ -330,8 +352,16 @@ def apply_home(config: RobotConfig, degrees: list[float]) -> RobotConfig:
 class ArmService:
     """Thread-safe wrapper: the latest slider targets win, moves run one at a time."""
 
-    def __init__(self, arm: ArmController, ik: IKBridge, *, saved_home: bool) -> None:
+    def __init__(
+        self,
+        arm: ArmController,
+        ik: IKBridge,
+        *,
+        saved_home: bool,
+        camera: SerialCamera | None = None,
+    ) -> None:
         self.arm = arm
+        self.camera = camera
         self.ik = ik
         self.home_deg = [j.home_deg for j in arm.config.joints]
         self.home_source = "(saved in configs/home.txt)" if saved_home else "(from joints.yaml)"
@@ -357,6 +387,8 @@ class ArmService:
                     "min_us": cal.min_us,
                     "max_us": cal.max_us,
                     "home_deg": home,
+                    "min_deg": LIMITS_DEG[cal.index][0],
+                    "max_deg": LIMITS_DEG[cal.index][1],
                     "commanded_deg": joint.commanded_deg,
                 }
             )
@@ -368,6 +400,14 @@ class ArmService:
             "joints": joints,
             "home_source": self.home_source,
             "home_version": self.home_version,
+            "camera": None
+            if self.camera is None
+            else {
+                "connected": self.camera.connected,
+                "fps": self.camera.fps,
+                "port": self.camera.port,
+                "error": self.camera.last_error,
+            },
             "error": error,
         }
 
@@ -378,6 +418,10 @@ class ArmService:
     def move(self, angles: dict[int, float]) -> None:
         if not self.arm.ready:
             raise RobotArmError("press 'Snap to home (startup)' first")
+        for index, deg in angles.items():
+            low, high = LIMITS_DEG[index]
+            if not low <= deg <= high:
+                raise ValueError(f"joint {index} angle {deg:.1f} outside {low:g}..{high:g}")
         with self._lock:
             self._pending.update(angles)
         self._wake.set()
@@ -408,7 +452,7 @@ class ArmService:
             ]
             tcp = self.ik.tcp_position(degrees)
             if tcp is not None:
-                lines.append("tcp_base_link_m = " + " ".join(f"{v:.6f}" for v in tcp))
+                lines.append("tcp_base_link_mm = " + " ".join(f"{v * 1000:.3f}" for v in tcp))
             HOME_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
             self.home_deg = degrees
             self.home_source = "(saved in configs/home.txt)"
@@ -454,6 +498,11 @@ def load_model(ik: IKBridge) -> dict:
             "right": {"xyz": grip["right_finger_joint"]["xyz_m"]},
         },
         "tcp": ik.tcp(),
+        "grip": {
+            "closed_deg": GRIPPER_CLOSED_DEG,
+            "open_deg": GRIPPER_OPEN_DEG,
+            "max_width_m": GRIPPER_MAX_WIDTH_M,
+        },
         "ik_ok": ik.ok,
         "ik_error": ik.error,
     }
@@ -463,6 +512,9 @@ def make_handler(service: ArmService) -> type[BaseHTTPRequestHandler]:
     page = (
         PAGE.replace("__ZERO__", json.dumps(service.ik.zero()))
         .replace("__SIGN__", json.dumps(service.ik.sign()))
+        .replace("__GC__", json.dumps(GRIPPER_CLOSED_DEG))
+        .replace("__GO__", json.dumps(GRIPPER_OPEN_DEG))
+        .replace("__GW__", json.dumps(GRIPPER_MAX_WIDTH_M))
         .replace("__WARNING__", STARTUP_WARNING.replace("`", "'"))
         .encode()
     )
@@ -482,6 +534,30 @@ def make_handler(service: ArmService) -> type[BaseHTTPRequestHandler]:
         def _json(self, payload: dict, code: int = 200) -> None:
             self._send(code, json.dumps(payload).encode(), "application/json")
 
+        def _stream_camera(self) -> None:
+            cam = service.camera
+            if cam is None:
+                return self._json({"error": "camera disabled"}, 404)
+            self.send_response(200)
+            self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame")
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            seq = -1
+            try:
+                while True:
+                    jpeg, seq = cam.wait_frame(seq, timeout=5.0)
+                    if jpeg is None:
+                        continue
+                    self.wfile.write(
+                        b"--frame\r\nContent-Type: image/jpeg\r\nContent-Length: "
+                        + str(len(jpeg)).encode()
+                        + b"\r\n\r\n"
+                        + jpeg
+                        + b"\r\n"
+                    )
+            except (BrokenPipeError, ConnectionResetError):
+                return
+
         def do_GET(self) -> None:
             if self.path == "/":
                 self._send(200, page, "text/html; charset=utf-8")
@@ -489,6 +565,14 @@ def make_handler(service: ArmService) -> type[BaseHTTPRequestHandler]:
                 self._json(load_model(service.ik))
             elif self.path == "/api/status":
                 self._json(service.status())
+            elif self.path.startswith("/camera.jpg"):
+                jpeg = service.camera.latest() if service.camera else None
+                if jpeg is None:
+                    self._json({"error": "no camera frame"}, 503)
+                else:
+                    self._send(200, jpeg, "image/jpeg")
+            elif self.path.startswith("/camera.mjpg"):
+                self._stream_camera()
             else:
                 self._json({"error": "not found"}, 404)
 
@@ -504,8 +588,8 @@ def make_handler(service: ArmService) -> type[BaseHTTPRequestHandler]:
                 elif self.path == "/api/move":
                     angles = {int(k): float(v) for k, v in body["angles"].items()}
                     for index, deg in angles.items():
-                        if not 0 <= index < 6 or not 0.0 <= deg <= 180.0:
-                            raise ValueError(f"bad joint/angle: {index} {deg}")
+                        if not 0 <= index < 6:
+                            raise ValueError(f"bad joint: {index}")
                     service.move(angles)
                 elif self.path == "/api/home":
                     service.home()
@@ -533,6 +617,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--host", default="127.0.0.1", help="use 0.0.0.0 to skip the SSH tunnel (insecure)")
     parser.add_argument("--config", type=Path, default=None)
+    parser.add_argument("--camera-port", default="auto", help="ESP32-CAM serial port, or auto")
+    parser.add_argument("--camera-baud", type=int, default=921600, help="must match BAUD in the .ino")
+    parser.add_argument("--no-camera", action="store_true")
     args = parser.parse_args(argv)
 
     config = RobotConfig.load(args.config)
@@ -541,14 +628,32 @@ def main(argv: list[str] | None = None) -> int:
         config = apply_home(config, saved)
         logger.info("home loaded from %s", HOME_FILE)
     driver = PCA9685Driver(config)
-    service = ArmService(ArmController(config, driver), IKBridge(), saved_home=saved is not None)
+    camera = None
+    if not args.no_camera:
+        try:
+            import serial  # noqa: F401  (pyserial)
+
+            port = None if args.camera_port == "auto" else args.camera_port
+            camera = SerialCamera(port, args.camera_baud)
+            camera.start()
+        except ImportError:
+            logger.warning("pyserial missing, camera disabled (pip install pyserial)")
+    service = ArmService(
+        ArmController(config, driver),
+        IKBridge(),
+        saved_home=saved is not None,
+        camera=camera,
+    )
     server = ThreadingHTTPServer((args.host, args.port), make_handler(service))
+    server.daemon_threads = True
     print(f"GUI on http://{args.host}:{args.port}  (tunnel: ssh -L {args.port}:localhost:{args.port} <user>@<pi>)")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         print("\nstopped. The last pulses were sent.")
     finally:
+        if camera is not None:
+            camera.stop()
         server.server_close()
         driver.close()
     return 0
