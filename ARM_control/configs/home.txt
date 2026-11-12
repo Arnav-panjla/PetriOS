@@ -1,0 +1,6 @@
+# Home pose saved by the web GUI. Read at the next start.
+# servo_deg is the commanded angle per joint, 0 = min pulse, 180 = max pulse.
+saved = 2026-11-12 10:22:09
+servo_deg = 88.500 36.000 56.500 151.000 116.250 41.500
+pulse_us = 1680 940 1253 2513 2050 1215
+tcp_base_link_m = 0.024437 -0.190020 0.013972

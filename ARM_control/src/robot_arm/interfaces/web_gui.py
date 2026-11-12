@@ -1,18 +1,26 @@
-"""Browser slider GUI for the arm. Run on the Pi, open it through an SSH tunnel.
+"""Browser GUI for the arm: sliders, a live URDF stick model, IK and a saved home.
+
+Run on the Pi, open it through an SSH tunnel:
 
     ssh -L 8000:localhost:8000 pi@<pi-address>
     python -m robot_arm.interfaces.web_gui
     # then open http://localhost:8000 on the laptop
 
-Standard library only. Binds to 127.0.0.1 so it is reachable only via the tunnel.
+The server binds to 127.0.0.1, so it is reachable only through the tunnel.
+IK comes from ARM_control/ik/arm_ik_v2.py (needs numpy and scipy). Without them
+the rest of the GUI still works. The model uses that file's servo zero and signs.
+The home pose is saved in configs/home.txt and loaded on the next start.
 """
 
 from __future__ import annotations
 
 import argparse
+import dataclasses
+import importlib.util
 import json
 import logging
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -23,19 +31,29 @@ from robot_arm.utils.errors import RobotArmError
 
 logger = logging.getLogger(__name__)
 
+IK_PATH = Path(__file__).resolve().parents[3] / "ik" / "arm_ik_v2.py"
+HOME_FILE = RobotConfig.default_dir() / "home.txt"
+
+# Used only when the IK module cannot be imported. Same values as arm_ik_v2.py
+# (J0-J4) plus the gripper servo, so the model still draws.
+FALLBACK_ZERO = [90.0, 39.0, 58.0, 66.5, 116.25, 162.0]
+FALLBACK_SIGN = [1.0, 1.0, -1.0, 1.0, -1.0, 1.0]
+FALLBACK_TCP = [0.010023, -0.125002, 0.0015]
+
 PAGE = """<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Robot Arm</title><style>
 body{font-family:system-ui,sans-serif;background:#16181d;color:#e6e6e6;margin:12px auto;padding:0 12px;max-width:1400px}
 #layout{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}#left{flex:1 1 520px;min-width:320px}#right{flex:1 1 480px;position:sticky;top:8px}
-canvas{width:100%;height:520px;background:#0e1014;border-radius:8px;touch-action:none;cursor:grab}
-.cal{font-size:12px;color:#aaa;margin-top:4px}.cal input{width:56px;background:#111;color:#eee;border:1px solid #444;border-radius:4px;padding:2px}
 h1{font-size:20px} .row{background:#20242c;border-radius:8px;padding:10px 14px;margin:10px 0}
-.top{display:flex;justify-content:space-between;align-items:center;font-size:14px}
+.top{display:flex;justify-content:space-between;align-items:center;font-size:14px;flex-wrap:wrap;gap:6px}
 input[type=range]{width:100%;height:32px} button{padding:8px 14px;margin:4px 4px 4px 0;border:0;border-radius:6px;background:#3a6df0;color:#fff;font-size:14px;cursor:pointer}
-button.warn{background:#d9822b} button.gray{background:#555} .val{font-variant-numeric:tabular-nums;font-weight:600}
+button:disabled{opacity:.4;cursor:default} button.warn{background:#d9822b} button.gray{background:#555} .val{font-variant-numeric:tabular-nums;font-weight:600}
 #msg{min-height:20px;color:#f0c36a;font-size:14px} small{color:#999}
-input[type=number]{width:70px;background:#111;color:#eee;border:1px solid #444;border-radius:4px;padding:4px}
+input[type=number],select{background:#111;color:#eee;border:1px solid #444;border-radius:4px;padding:4px}
+input[type=number]{width:78px}
+canvas{width:100%;height:480px;background:#0e1014;border-radius:8px;touch-action:none;cursor:grab}
+pre{background:#111;border-radius:6px;padding:8px;font-size:12px;white-space:pre-wrap;margin:6px 0 0}
 </style></head><body>
 <h1>Robot Arm Control</h1>
 <div id="msg"></div>
@@ -43,30 +61,29 @@ input[type=number]{width:70px;background:#111;color:#eee;border:1px solid #444;b
 <button class="warn" id="start">Snap to home (startup)</button>
 <button id="home">Home (smooth)</button>
 <button class="gray" id="reset">Sliders = current</button>
-<br><label><input type="checkbox" id="hold"> hold: preview only (don't move arm)</label>
-<button class="warn" id="send">Set: send sliders to arm</button>
+<button class="warn" id="sethome">Set current pose as new home</button>
 <label><input type="checkbox" id="live" checked> live drag</label>
 <label>&nbsp; soften <input type="number" id="soften" min="0" value="" placeholder="yaml"> ms/deg</label>
 <button class="gray" id="setsoft">set</button>
+<br><small id="homeinfo"></small>
 <br><small>Angles are commanded, not measured (no position feedback).</small>
 </div>
 <div id="layout"><div id="left"><div id="joints"></div></div>
 <div id="right"><canvas id="cv"></canvas>
-<div class="row" id="sim"><b>Sim pose</b> <small>(independent model angles q&deg;, does not move the arm)</small>
-<div id="simsl"></div>
-<button id="calib">SYNC: arm's current angles = this sim pose</button>
-<button class="gray" id="simreal">Sim = real</button>
-<button class="gray" id="simzero">Sim = 0</button>
-<div id="caltxt" class="cal"></div>
-<table id="cmp" style="width:100%;font-size:12px;margin-top:6px;border-collapse:collapse"></table></div>
-<small>Colours: blue = real (commanded), green = sim pose, amber = slider target.<br>Approximate stick model from kinematics.yaml / URDF. Solid = commanded, faint = slider target. Drag to rotate, wheel to zoom.
-Model angle q = sign &times; (servo&deg; &minus; offset); set offset/sign per joint below the slider (saved in your browser).
-Joints 0-4 &rarr; URDF joint_1..5, joint 5 &rarr; gripper.</small></div></div>
+<small>Blue = commanded pose, amber = slider target, green = IK solution. Drag to rotate, wheel to zoom.
+Model angle q = sign &times; (servo&deg; &minus; zero), taken from arm_ik_v2.py. Joints 0-4 &rarr; joint_1..5, joint 5 &rarr; gripper.</small>
+<div class="row" id="ik"><b>Inverse kinematics</b> <small id="ikstat"></small><br>
+<select id="ikmode"><option value="abs">absolute TCP (base_link, m)</option><option value="rel">relative to current TCP (m)</option></select>
+x <input type="number" step="0.005" id="ikx" value="0"> y <input type="number" step="0.005" id="iky" value="0"> z <input type="number" step="0.005" id="ikz" value="0">
+<label><input type="checkbox" id="ikhold"> hold tool direction</label><br>
+<button class="gray" id="ikfill">Fill from current TCP</button>
+<button id="iksolve">Solve (preview only)</button>
+<button class="warn" id="ikgo" disabled>Move arm to solution</button>
+<pre id="ikout">TCP = estimated closed-fingertip midpoint. Solving never moves the arm.</pre></div>
+</div></div>
 <script>
-localStorage.removeItem('cal');localStorage.removeItem('cal2'); // stale browser offsets are never used
-const ZERO_SERVO_DEG=__ZERO__; // from configs/kinematics.yaml model_zero_servo_deg
-let cal=ZERO_SERVO_DEG.map(o=>({o:o,s:1}));
-let state=null,sliders=[],pending={},timer=null,dragging=false;
+const ZERO=__ZERO__,SIGN=__SIGN__;
+let state=null,sliders=[],pending={},timer=null,model=null,ikPrev=null;
 const $=id=>document.getElementById(id);
 const msg=t=>{$('msg').textContent=t||''};
 async function api(path,body){
@@ -77,25 +94,20 @@ function build(s){
   s.joints.forEach(j=>{
     const d=document.createElement('div'); d.className='row';
     d.innerHTML=`<div class="top"><b>Joint ${j.index}</b><small>ch ${j.channel} | home ${j.home_deg.toFixed(1)}&deg; | ${j.min_us}-${j.max_us} us</small>
-    <span>target <span class="val" id="t${j.index}">${j.commanded_deg.toFixed(1)}</span>&deg; &nbsp; now <span class="val" id="c${j.index}">${j.commanded_deg.toFixed(1)}</span>&deg;</span></div>
+    <span>target <span class="val" id="t${j.index}">${j.commanded_deg.toFixed(1)}</span>&deg; &nbsp; now <span class="val" id="c${j.index}">${j.commanded_deg.toFixed(1)}</span>&deg; &nbsp; q <span class="val" id="q${j.index}">0</span>&deg;</span></div>
     <input type="range" min="0" max="180" step="0.5" value="${j.commanded_deg}" id="s${j.index}">
-    <div class="cal">model: offset <input type="number" step="1" data-o="${j.index}" value="${cal[j.index].o}">&deg; sign <input type="number" step="2" min="-1" max="1" data-g="${j.index}" value="${cal[j.index].s}"></div>
     <div><button class="gray" data-h="${j.index}">home</button>
     <button class="gray" data-n="${j.index}" data-d="-1">-1</button><button class="gray" data-n="${j.index}" data-d="1">+1</button></div>`;
     box.appendChild(d);
     const sl=d.querySelector('input'); sliders[j.index]=sl;
-    sl.addEventListener('pointerdown',()=>dragging=true);
     sl.addEventListener('input',()=>{$('t'+j.index).textContent=(+sl.value).toFixed(1); if($('live').checked)queue(j.index,+sl.value)});
-    sl.addEventListener('change',()=>{dragging=false;queue(j.index,+sl.value,true)});
+    sl.addEventListener('change',()=>queue(j.index,+sl.value,true));
   });
-  box.querySelectorAll('[data-o]').forEach(e=>e.onchange=()=>{cal[+e.dataset.o].o=+e.value;saveCal()});
-  box.querySelectorAll('[data-g]').forEach(e=>e.onchange=()=>{cal[+e.dataset.g].s=(+e.value<0?-1:1);e.value=cal[+e.dataset.g].s;saveCal()});
   box.querySelectorAll('[data-h]').forEach(b=>b.onclick=()=>{const i=+b.dataset.h;const v=state.joints[i].home_deg;setSlider(i,v);queue(i,v,true)});
   box.querySelectorAll('[data-n]').forEach(b=>b.onclick=()=>{const i=+b.dataset.n;const v=Math.min(180,Math.max(0,+sliders[i].value+ +b.dataset.d));setSlider(i,v);queue(i,v,true)});
 }
 function setSlider(i,v){sliders[i].value=v;$('t'+i).textContent=(+v).toFixed(1)}
 function queue(i,v,now){
-  if($('hold').checked){pending={};return}
   pending[i]=v; if(now){flush();return}
   if(!timer)timer=setTimeout(flush,80);
 }
@@ -109,22 +121,26 @@ async function refresh(){
   try{
     const s=await api('/api/status'); const first=!state; state=s;
     $('start').style.display=s.ready?'none':'';
-    if(first)build(s);
-    s.joints.forEach(j=>{$('c'+j.index).textContent=j.commanded_deg.toFixed(1)});
+    if(first||s.home_version!==homeVersion){homeVersion=s.home_version;build(s)}
+    s.joints.forEach(j=>{$('c'+j.index).textContent=j.commanded_deg.toFixed(1);$('q'+j.index).textContent=qOf(j.index,j.commanded_deg).toFixed(1)});
+    $('homeinfo').textContent='home (servo deg): ['+s.joints.map(j=>j.home_deg.toFixed(1)).join(', ')+']  '+s.home_source;
     if(document.activeElement!==$('soften')&&s.soften_ms!==null)$('soften').value=s.soften_ms;
   }catch(e){msg('connection lost')}
 }
+let homeVersion=-1;
 $('start').onclick=async()=>{
   if(!confirm(`__WARNING__`))return;
   const r=await api('/api/startup',{confirmed:true});
   if(!r.error){state=null;refresh();}};
 $('home').onclick=async()=>{await api('/api/home',{});state.joints.forEach(j=>setSlider(j.index,j.home_deg))};
 $('reset').onclick=()=>state.joints.forEach(j=>setSlider(j.index,j.commanded_deg));
+$('sethome').onclick=async()=>{
+  if(!confirm('Save the current commanded pose as the new home? It is written to configs/home.txt and used on every start.'))return;
+  const r=await api('/api/sethome',{});
+  if(!r.error)msg('home saved to '+r.file);};
 $('setsoft').onclick=()=>api('/api/soften',{ms:$('soften').value===''?null:+$('soften').value});
-
-function saveCal(){$('caltxt').textContent='offsets in use: ['+cal.map(c=>c.o).join(', ')+']  signs: ['+cal.map(c=>c.s).join(', ')+']  (session only; edit model_zero_servo_deg in configs/kinematics.yaml to keep)'}
-/* ---- tiny 3D stick model (z up, metres) ---- */
-let model=null,yaw=0.8,pitch=0.5,zoom=1;
+/* ---- 3D stick model (z up, metres) ---- */
+let yaw=0.8,pitch=0.5,zoom=1;
 const cv=$('cv'),cx=cv.getContext('2d');
 const I=()=>[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]; // column-major
 function mul(a,b){const r=new Array(16).fill(0);for(let c=0;c<4;c++)for(let rr=0;rr<4;rr++)for(let k=0;k<4;k++)r[c*4+rr]+=a[k*4+rr]*b[c*4+k];return r}
@@ -132,9 +148,9 @@ function T(x,y,z){const m=I();m[12]=x;m[13]=y;m[14]=z;return m}
 function R(ax,q){const[c,s]=[Math.cos(q),Math.sin(q)],[x,y,z]=ax,t=1-c,m=I();
  m[0]=t*x*x+c;m[4]=t*x*y-s*z;m[8]=t*x*z+s*y;m[1]=t*x*y+s*z;m[5]=t*y*y+c;m[9]=t*y*z-s*x;m[2]=t*x*z-s*y;m[6]=t*y*z+s*x;m[10]=t*z*z+c;return m}
 const pt=(m,p=[0,0,0])=>[m[0]*p[0]+m[4]*p[1]+m[8]*p[2]+m[12],m[1]*p[0]+m[5]*p[1]+m[9]*p[2]+m[13],m[2]*p[0]+m[6]*p[1]+m[10]*p[2]+m[14]];
-function qOf(i,deg){return cal[i].s*(deg-cal[i].o)} // model angle in DEGREES
-function fk(degs){return fkq(degs.map((d,i)=>qOf(i,d)))}
-function fkq(qs){ // returns frames [base, l1..l5] and gripper segments
+function qOf(i,deg){return SIGN[i]*(deg-ZERO[i])} // model angle in DEGREES
+function fk(degs){
+  const qs=degs.map((d,i)=>qOf(i,d));
   let m=I();const frames=[m];
   model.joints.forEach((j,i)=>{m=mul(m,mul(T(...j.xyz),R(j.axis,qs[i]*Math.PI/180)));frames.push(m)});
   const g=model.gripper,qf=Math.max(-0.8,Math.min(0.8,qs[5]*Math.PI/180));
@@ -142,83 +158,184 @@ function fkq(qs){ // returns frames [base, l1..l5] and gripper segments
   [[g.left,qf],[g.right,-qf]].forEach(([f,q])=>{
     const fm=mul(wrist,mul(T(...f.xyz),R([0,0,1],q)));
     fingers.push([pt(fm),pt(fm,[0.0,-0.045,0])]);});
-  return{frames,fingers};
+  return{frames,fingers,tcp:pt(wrist,model.tcp)};
 }
 function proj(p,sc,w,h,ctr){
   const[x,y,z]=[p[0]-ctr[0],p[1]-ctr[1],p[2]-ctr[2]];
   const cyw=Math.cos(yaw),syw=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);
-  const x1=x*cyw-y*syw,y1=x*syw+y*cyw;           // rotate about z
-  const y2=y1*cp-z*sp,z2=y1*sp+z*cp;             // tilt
+  const x1=x*cyw-y*syw,y1=x*syw+y*cyw;
+  const y2=y1*cp-z*sp,z2=y1*sp+z*cp;
   return[w/2+x1*sc,h/2-z2*sc,y2];}
 function draw(){
-  if(!model||!state){return}
+  if(!model||!state||!sliders.length)return;
   const dpr=window.devicePixelRatio||1,w=cv.clientWidth,h=cv.clientHeight;
   if(cv.width!==w*dpr){cv.width=w*dpr;cv.height=h*dpr}
   cx.setTransform(dpr,0,0,dpr,0,0);cx.clearRect(0,0,w,h);
   const sc=Math.min(w,h)/0.55*zoom,ctr=[0,-0.1,0.12];
   const P=p=>proj(p,sc,w,h,ctr);
   const line=(a,b,col,wd)=>{const A=P(a),B=P(b);cx.strokeStyle=col;cx.lineWidth=wd;cx.beginPath();cx.moveTo(A[0],A[1]);cx.lineTo(B[0],B[1]);cx.stroke()};
-  // ground grid
   for(let i=-5;i<=5;i++){const v=i*0.05;line([v,-0.35,0],[v,0.15,0],'#1d222b',1);line([-0.25,v-0.1,0],[0.25,v-0.1,0],'#1d222b',1)}
   line([0,0,0],[0.06,0,0],'#e55',2);line([0,0,0],[0,0.06,0],'#5e5',2);line([0,0,0],[0,0,0.06],'#58f',2);
   const cur=state.joints.map(j=>j.commanded_deg),tgt=sliders.map(s=>+s.value);
-  [[fk(tgt),0.25,0],[fkq(simq),0.6,1],[fk(cur),1,2]].forEach(([fr,a,kind])=>{
-    const{frames,fingers}=fr;
+  const poses=[[tgt,0],[ikPrev,1],[cur,2]];
+  let curTcp=null;
+  poses.forEach(([degs,kind])=>{
+    if(!degs)return;
+    const{frames,fingers,tcp}=fk(degs);
     const pts=frames.map(f=>pt(f));
     pts.push(pt(frames[5],[0.009849,-0.0687135,0]));
-    const col=kind===0?'rgba(255,200,80,0.35)':kind===1?'rgba(80,230,120,0.75)':'#4da3ff';
+    const col=kind===0?'rgba(255,200,80,0.35)':kind===1?'rgba(80,230,120,0.8)':'#4da3ff';
     for(let i=0;i<pts.length-1;i++)line(pts[i],pts[i+1],col,kind===2?7:4);
-    fingers.forEach(f=>line(f[0],f[1],a<1?'rgba(255,120,120,0.4)':'#ff6b6b',a<1?3:5));
+    fingers.forEach(f=>line(f[0],f[1],kind===2?'#ff6b6b':'rgba(255,120,120,0.4)',kind===2?5:3));
+    const A=P(tcp);cx.fillStyle=kind===1?'#6f6':'#ffd84d';cx.beginPath();cx.arc(A[0],A[1],kind===2?5:4,0,7);cx.fill();
     if(kind===2){
-      frames.forEach((f,i)=>{const A=P(pt(f));cx.fillStyle='#fff';cx.beginPath();cx.arc(A[0],A[1],4,0,7);cx.fill();
-        if(i>0){cx.fillStyle='#9ab';cx.font='11px sans-serif';cx.fillText('J'+(i-1),A[0]+7,A[1]-6)}
-        if(i>0&&i<6){const ax=model.joints[i-1].axis,o=pt(f);const e=pt(f,ax.map(v=>v*0.03));line(o,e,'#7f7',2)}});
+      curTcp=tcp;
+      frames.forEach((f,i)=>{const B=P(pt(f));cx.fillStyle='#fff';cx.beginPath();cx.arc(B[0],B[1],4,0,7);cx.fill();
+        if(i>0){cx.fillStyle='#9ab';cx.font='11px sans-serif';cx.fillText('J'+(i-1),B[0]+7,B[1]-6)}
+        if(i>0&&i<6){const ax=model.joints[i-1].axis,o=pt(f);line(o,pt(f,ax.map(v=>v*0.03)),'#7f7',2)}});
     }
   });
-  const tip=pt(fk(cur).frames[5]);
   cx.fillStyle='#ccc';cx.font='12px monospace';
-  cx.fillText(`wrist (base frame): x ${tip[0].toFixed(3)} y ${tip[1].toFixed(3)} z ${tip[2].toFixed(3)} m`,10,18);
+  cx.fillText(`TCP (base_link): x ${curTcp[0].toFixed(3)} y ${curTcp[1].toFixed(3)} z ${curTcp[2].toFixed(3)} m`,10,18);
 }
-const simq=[0,0,0,0,0,0];
-(function(){const b=$('simsl');for(let i=0;i<6;i++){const d=document.createElement('div');
- d.innerHTML=`<small>${i<5?'J'+i+' (joint_'+(i+1)+')':'gripper'}</small> <span class="val" id="qv${i}">0.0</span>&deg;
- <input type="range" min="-180" max="180" step="0.5" value="0" id="q${i}" style="height:20px">`;b.appendChild(d);
- d.querySelector('input').oninput=e=>{simq[i]=+e.target.value;$('qv'+i).textContent=simq[i].toFixed(1)}}})();
-function setSim(i,v){simq[i]=v;$('q'+i).value=v;$('qv'+i).textContent=v.toFixed(1)}
-const realQ=()=>state.joints.map((j,i)=>qOf(i,j.commanded_deg));
-$('simreal').onclick=()=>realQ().forEach((q,i)=>setSim(i,Math.max(-180,Math.min(180,q))));
-$('simzero').onclick=()=>simq.forEach((_,i)=>setSim(i,0));
-$('calib').onclick=()=>{
-  state.joints.forEach((j,i)=>{cal[i].o=+(j.commanded_deg-cal[i].s*simq[i]).toFixed(2);
-    const e=document.querySelector(`[data-o="${i}"]`);if(e)e.value=cal[i].o});
-  saveCal();msg('SYNCED: offsets = '+cal.map(c=>c.o).join(', ')+'. Now moving a slider moves the blue model from this pose.');};
-$('send').onclick=()=>{const a={};sliders.forEach((s,i)=>a[i]=+s.value);api('/api/move',{angles:a})};
-function compare(){
-  if(!state||!model)return;
-  const rq=realQ(),rf=fkq(rq),sf=fkq(simq),rp=pt(rf.frames[5]),sp=pt(sf.frames[5]);
-  let h='<tr style="color:#999"><td>joint</td><td>servo&deg;</td><td>real q&deg;</td><td>sim q&deg;</td><td>diff&deg;</td></tr>';
-  rq.forEach((q,i)=>{const d=q-simq[i];h+=`<tr><td>${i}</td><td>${state.joints[i].commanded_deg.toFixed(1)}</td><td>${q.toFixed(1)}</td><td>${simq[i].toFixed(1)}</td><td style="color:${Math.abs(d)<0.5?'#6e6':'#f96'}">${d.toFixed(1)}</td></tr>`});
-  const e=Math.hypot(rp[0]-sp[0],rp[1]-sp[1],rp[2]-sp[2])*1000;
-  h+=`<tr><td colspan=5>wrist real (${rp.map(v=>(v*1000).toFixed(0)).join(', ')}) mm &nbsp; sim (${sp.map(v=>(v*1000).toFixed(0)).join(', ')}) mm &nbsp; <b>error ${e.toFixed(1)} mm</b></td></tr>`;
-  $('cmp').innerHTML=h;}
-setInterval(compare,250);
 let drag=null;
 cv.addEventListener('pointerdown',e=>{drag=[e.clientX,e.clientY];cv.setPointerCapture(e.pointerId)});
 cv.addEventListener('pointerup',()=>drag=null);
 cv.addEventListener('pointermove',e=>{if(!drag)return;yaw+=(e.clientX-drag[0])*0.01;pitch=Math.max(-1.5,Math.min(1.5,pitch+(e.clientY-drag[1])*0.01));drag=[e.clientX,e.clientY]});
 cv.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(0.3,Math.min(5,zoom*(e.deltaY<0?1.1:0.9)))},{passive:false});
 (function loop(){draw();requestAnimationFrame(loop)})();
-saveCal();api('/api/model').then(m=>model=m);
+/* ---- IK ---- */
+const f3=a=>'['+a.map(v=>v.toFixed(3)).join(', ')+']';
+$('ikfill').onclick=()=>{
+  if($('ikmode').value==='rel'){['x','y','z'].forEach(k=>$('ik'+k).value=0);return}
+  const t=fk(state.joints.map(j=>j.commanded_deg)).tcp;['x','y','z'].forEach((k,i)=>$('ik'+k).value=+t[i].toFixed(4));};
+$('ikmode').onchange=()=>$('ikfill').click();
+$('iksolve').onclick=async()=>{
+  $('ikgo').disabled=true;ikPrev=null;$('ikout').textContent='solving...';
+  const r=await api('/api/ik/solve',{mode:$('ikmode').value,x:+$('ikx').value,y:+$('iky').value,z:+$('ikz').value,hold:$('ikhold').checked});
+  if(r.error){$('ikout').textContent='IK: '+r.error;return}
+  ikPrev=r.servo;$('ikgo').disabled=false;
+  $('ikout').textContent=`target TCP ${f3(r.target)} m\\nservo J0-J4 ${f3(r.servo.slice(0,5))} deg\\nchange      ${f3(r.change)} deg\\npulses us   [${r.pulses.join(', ')}]\\nposition error ${r.err_mm.toFixed(3)} mm`+(r.axis_err_deg===null?'':`\\ndirection error ${r.axis_err_deg.toFixed(2)} deg`)+'\\nPreview only: green model. Press "Move arm to solution" to execute.';
+};
+$('ikgo').onclick=async()=>{
+  if(!ikPrev||!confirm('Move the real arm to the IK solution? Check for collisions first.'))return;
+  const a={};for(let i=0;i<5;i++)a[i]=ikPrev[i];
+  const r=await api('/api/move',{angles:a});
+  if(!r.error){for(let i=0;i<5;i++)setSlider(i,ikPrev[i]);ikPrev=null;$('ikgo').disabled=true}};
+api('/api/model').then(m=>{model=m;$('ikstat').textContent=m.ik_ok?'(arm_ik_v2.py loaded)':'(IK unavailable: '+m.ik_error+')';$('iksolve').disabled=!m.ik_ok});
 refresh();setInterval(refresh,300);
 </script></body></html>
 """
 
 
+class IKBridge:
+    """Loads ik/arm_ik_v2.py lazily. Solving never touches the hardware."""
+
+    def __init__(self, path: Path = IK_PATH) -> None:
+        self.mod = None
+        self.error: str | None = None
+        try:
+            spec = importlib.util.spec_from_file_location("arm_ik_v2", path)
+            if spec is None or spec.loader is None:
+                raise ImportError(f"cannot load {path}")
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            self.mod = mod
+        except Exception as exc:  # numpy/scipy missing, file missing, ...
+            self.error = f"{type(exc).__name__}: {exc}"
+            logger.warning("IK unavailable: %s", self.error)
+
+    @property
+    def ok(self) -> bool:
+        return self.mod is not None
+
+    def zero(self) -> list[float]:
+        if not self.ok:
+            return FALLBACK_ZERO
+        return [float(v) for v in self.mod.URDF_ZERO_SERVO] + [float(self.mod.GRIPPER_SERVO)]
+
+    def sign(self) -> list[float]:
+        if not self.ok:
+            return FALLBACK_SIGN
+        return [float(v) for v in self.mod.SERVO_SIGN] + [1.0]
+
+    def tcp(self) -> list[float]:
+        return [float(v) for v in self.mod.TCP_ESTIMATE] if self.ok else FALLBACK_TCP
+
+    def tcp_position(self, servo_deg: list[float]) -> list[float] | None:
+        if not self.ok:
+            return None
+        import numpy as np
+
+        mod = self.mod
+        T, _ = mod.fk(mod.to_q(np.array(servo_deg[:5])), np.array(mod.TCP_ESTIMATE))
+        return [float(v) for v in T[:3, 3]]
+
+    def solve(self, current: list[float], body: dict) -> dict:
+        if not self.ok:
+            raise ValueError(f"IK unavailable ({self.error}). pip install numpy scipy")
+        import numpy as np
+
+        mod = self.mod
+        start = np.array(current[:5], dtype=float)
+        if np.any(start < mod.SOFT_LIMIT_DEG[:, 0]) or np.any(start > mod.SOFT_LIMIT_DEG[:, 1]):
+            raise ValueError(
+                "current pose is outside the IK soft limits "
+                f"{mod.SOFT_LIMIT_DEG.tolist()}; move the sliders inside them first"
+            )
+        tcp = np.array(mod.TCP_ESTIMATE)
+        vec = np.array([float(body["x"]), float(body["y"]), float(body["z"])])
+        if body.get("mode") == "rel":
+            T0, _ = mod.fk(mod.to_q(start), tcp)
+            target = T0[:3, 3] + vec
+        else:
+            target = vec
+        hold = bool(body.get("hold"))
+        q, _T, err, axis_err = mod.solve(target, tcp, start, hold)
+        servo = mod.to_servo(q)
+        pulses = [mod.pwm(i, float(v)) for i, v in enumerate(servo)]
+        return {
+            "target": [float(v) for v in target],
+            "servo": [float(v) for v in servo] + [float(current[5])],
+            "change": [float(v) for v in servo - start],
+            "pulses": pulses,
+            "err_mm": float(err) * 1000.0,
+            "axis_err_deg": float(axis_err) if hold else None,
+        }
+
+
+def load_home() -> list[float] | None:
+    """Read servo_deg from configs/home.txt, or None when there is no saved home."""
+    if not HOME_FILE.is_file():
+        return None
+    for line in HOME_FILE.read_text(encoding="utf-8").splitlines():
+        key, sep, value = line.partition("=")
+        if sep and key.strip() == "servo_deg":
+            degrees = [float(v) for v in value.split()]
+            if len(degrees) == 6 and all(0.0 <= d <= 180.0 for d in degrees):
+                return degrees
+            raise RobotArmError(f"{HOME_FILE}: servo_deg needs 6 values in 0..180")
+    return None
+
+
+def apply_home(config: RobotConfig, degrees: list[float]) -> RobotConfig:
+    """Return a config whose home pulses match the saved servo angles."""
+    joints = []
+    for joint, deg in zip(config.joints, degrees, strict=True):
+        us = joint.min_us + (joint.max_us - joint.min_us) * deg / 180.0
+        joints.append(dataclasses.replace(joint, home_us=int(round(us))))
+    return dataclasses.replace(config, joints=tuple(joints))
+
+
 class ArmService:
     """Thread-safe wrapper: the latest slider targets win, moves run one at a time."""
 
-    def __init__(self, arm: ArmController) -> None:
+    def __init__(self, arm: ArmController, ik: IKBridge, *, saved_home: bool) -> None:
         self.arm = arm
+        self.ik = ik
+        self.home_deg = [j.home_deg for j in arm.config.joints]
+        self.home_source = "(saved in configs/home.txt)" if saved_home else "(from joints.yaml)"
+        self.home_version = 0
         self._lock = threading.Lock()
         self._pending: dict[int, float] = {}
         self._wake = threading.Event()
@@ -226,9 +343,12 @@ class ArmService:
         self._busy = False
         threading.Thread(target=self._worker, daemon=True).start()
 
+    def commanded(self) -> list[float]:
+        return [j.commanded_deg for j in self.arm._joints]
+
     def status(self) -> dict:
         joints = []
-        for joint in self.arm._joints:
+        for joint, home in zip(self.arm._joints, self.home_deg, strict=True):
             cal = joint.servo.calibration
             joints.append(
                 {
@@ -236,8 +356,7 @@ class ArmService:
                     "channel": cal.channel,
                     "min_us": cal.min_us,
                     "max_us": cal.max_us,
-                    "home_us": cal.home_us,
-                    "home_deg": cal.home_deg,
+                    "home_deg": home,
                     "commanded_deg": joint.commanded_deg,
                 }
             )
@@ -247,6 +366,8 @@ class ArmService:
             "busy": self._busy,
             "soften_ms": self.arm.soften_ms,
             "joints": joints,
+            "home_source": self.home_source,
+            "home_version": self.home_version,
             "error": error,
         }
 
@@ -262,9 +383,37 @@ class ArmService:
         self._wake.set()
 
     def home(self) -> None:
+        if not self.arm.ready:
+            raise RobotArmError("press 'Snap to home (startup)' first")
         with self._lock:
             self._pending.clear()
-            self.arm.home()
+            self.arm.move_all(list(self.home_deg))
+
+    def set_home(self) -> str:
+        """Make the current commanded pose the home and save it to configs/home.txt."""
+        if not self.arm.ready:
+            raise RobotArmError("press 'Snap to home (startup)' first")
+        with self._lock:
+            degrees = self.commanded()
+            pulses = [
+                int(round(j.servo.pulse_us(d)))
+                for j, d in zip(self.arm._joints, degrees, strict=True)
+            ]
+            lines = [
+                "# Home pose saved by the web GUI. Read at the next start.",
+                "# servo_deg is the commanded angle per joint, 0 = min pulse, 180 = max pulse.",
+                f"saved = {time.strftime('%Y-%m-%d %H:%M:%S')}",
+                "servo_deg = " + " ".join(f"{d:.3f}" for d in degrees),
+                "pulse_us = " + " ".join(str(p) for p in pulses),
+            ]
+            tcp = self.ik.tcp_position(degrees)
+            if tcp is not None:
+                lines.append("tcp_base_link_m = " + " ".join(f"{v:.6f}" for v in tcp))
+            HOME_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            self.home_deg = degrees
+            self.home_source = "(saved in configs/home.txt)"
+            self.home_version += 1
+        return str(HOME_FILE)
 
     def _worker(self) -> None:
         while True:
@@ -276,7 +425,7 @@ class ArmService:
                     continue
                 self._busy = True
                 try:
-                    current = [j.commanded_deg for j in self.arm._joints]
+                    current = self.commanded()
                     for index, deg in targets.items():
                         current[index] = deg
                     self.arm.move_all(current)
@@ -288,8 +437,8 @@ class ArmService:
                 self._wake.set()
 
 
-def load_model() -> dict:
-    """Joint origins and axes from configs/kinematics.yaml, for the browser model."""
+def load_model(ik: IKBridge) -> dict:
+    """Joint origins and axes from configs/kinematics.yaml, plus the IK servo mapping."""
     import yaml
 
     path = RobotConfig.default_dir() / "kinematics.yaml"
@@ -304,17 +453,19 @@ def load_model() -> dict:
             "left": {"xyz": grip["left_finger_joint"]["xyz_m"]},
             "right": {"xyz": grip["right_finger_joint"]["xyz_m"]},
         },
+        "tcp": ik.tcp(),
+        "ik_ok": ik.ok,
+        "ik_error": ik.error,
     }
 
 
 def make_handler(service: ArmService) -> type[BaseHTTPRequestHandler]:
-    import yaml
-
-    kin = yaml.safe_load(
-        (RobotConfig.default_dir() / "kinematics.yaml").read_text(encoding="utf-8")
+    page = (
+        PAGE.replace("__ZERO__", json.dumps(service.ik.zero()))
+        .replace("__SIGN__", json.dumps(service.ik.sign()))
+        .replace("__WARNING__", STARTUP_WARNING.replace("`", "'"))
+        .encode()
     )
-    zero = [float(v) for v in kin["model_zero_servo_deg"]]
-    page = PAGE.replace("__ZERO__", json.dumps(zero)).replace("__WARNING__", STARTUP_WARNING.replace("`", "'")).encode()
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args) -> None:  # quiet
@@ -335,7 +486,7 @@ def make_handler(service: ArmService) -> type[BaseHTTPRequestHandler]:
             if self.path == "/":
                 self._send(200, page, "text/html; charset=utf-8")
             elif self.path == "/api/model":
-                self._json(load_model())
+                self._json(load_model(service.ik))
             elif self.path == "/api/status":
                 self._json(service.status())
             else:
@@ -343,6 +494,7 @@ def make_handler(service: ArmService) -> type[BaseHTTPRequestHandler]:
 
         def do_POST(self) -> None:
             length = int(self.headers.get("Content-Length") or 0)
+            result: dict = {"ok": True}
             try:
                 body = json.loads(self.rfile.read(length) or b"{}")
                 if self.path == "/api/startup":
@@ -357,6 +509,10 @@ def make_handler(service: ArmService) -> type[BaseHTTPRequestHandler]:
                     service.move(angles)
                 elif self.path == "/api/home":
                     service.home()
+                elif self.path == "/api/sethome":
+                    result["file"] = service.set_home()
+                elif self.path == "/api/ik/solve":
+                    result = service.ik.solve(service.commanded(), body)
                 elif self.path == "/api/soften":
                     ms = body.get("ms")
                     if ms is not None and float(ms) < 0:
@@ -366,7 +522,7 @@ def make_handler(service: ArmService) -> type[BaseHTTPRequestHandler]:
                     return self._json({"error": "not found"}, 404)
             except (RobotArmError, ValueError, KeyError, TypeError) as exc:
                 return self._json({"error": str(exc)})
-            self._json({"ok": True})
+            self._json(result)
 
     return Handler
 
@@ -380,8 +536,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     config = RobotConfig.load(args.config)
+    saved = load_home()
+    if saved is not None:
+        config = apply_home(config, saved)
+        logger.info("home loaded from %s", HOME_FILE)
     driver = PCA9685Driver(config)
-    service = ArmService(ArmController(config, driver))
+    service = ArmService(ArmController(config, driver), IKBridge(), saved_home=saved is not None)
     server = ThreadingHTTPServer((args.host, args.port), make_handler(service))
     print(f"GUI on http://{args.host}:{args.port}  (tunnel: ssh -L {args.port}:localhost:{args.port} <user>@<pi>)")
     try:
