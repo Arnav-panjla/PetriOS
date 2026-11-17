@@ -25,7 +25,7 @@ from robot_arm.kinematics.transforms import deg, rad
 from robot_arm.utils.errors import UnreachableError
 
 CONFIGS = Path(__file__).resolve().parents[1] / "configs"
-HOME_PULSES = (1700, 900, 1700, 2000, 2050, 1239)
+HOME_PULSES = (1700, 900, 1700, 2000, 2050, 1128)
 
 
 class ManualClock:

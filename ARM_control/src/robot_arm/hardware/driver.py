@@ -44,6 +44,21 @@ class MockDriver:
         self.closed = True
 
 
+class NoOpDriver:
+    """Discard PWM writes without opening any physical hardware.
+
+    This is deliberately separate from ``MockDriver``: a long-running GUI can
+    generate millions of trajectory samples, and simulation-only operation
+    must not retain those samples in memory.
+    """
+
+    def set_pulse_us(self, channel: int, pulse_us: float) -> None:
+        del channel, pulse_us
+
+    def close(self) -> None:
+        pass
+
+
 class PCA9685Driver:
     """ServoKit writer using the same angle map as the original script.
 
