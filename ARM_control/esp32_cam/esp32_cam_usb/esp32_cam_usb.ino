@@ -15,7 +15,7 @@
 #include "esp_camera.h"
 
 // ---- settings you may change ----
-#define BAUD          921600          // 2000000 also works with most CH340/CP2102 bridges
+#define BAUD          460800          // must match --camera-baud on the Pi (default 460800)
 #define FRAME_SIZE    FRAMESIZE_QVGA  // QQVGA 160x120, QVGA 320x240, CIF 400x296, VGA 640x480
 #define JPEG_QUALITY  12              // 10 (best) .. 63 (smallest); higher number = smaller frames
 #define FLIP_VERTICAL 0               // set 1 if the image is upside down
@@ -62,11 +62,11 @@ void setup() {
   config.pin_sccb_scl = SIOC_GPIO_NUM;
   config.pin_pwdn = PWDN_GPIO_NUM;
   config.pin_reset = RESET_GPIO_NUM;
-  config.xclk_freq_hz = 20000000;
+  config.xclk_freq_hz = 10000000;       // 10 MHz is more stable than 20 MHz on the OV2640
   config.pixel_format = PIXFORMAT_JPEG;
   config.frame_size = FRAME_SIZE;
   config.jpeg_quality = JPEG_QUALITY;
-  config.fb_count = 2;                    // needs PSRAM (the AI-Thinker board has it)
+  config.fb_count = 1;
   config.fb_location = CAMERA_FB_IN_PSRAM;
   config.grab_mode = CAMERA_GRAB_LATEST;  // always send the newest frame
 
@@ -91,6 +91,16 @@ void loop() {
   uint32_t len = fb->len;
   Serial.write(MAGIC, 4);
   Serial.write((const uint8_t *)&len, 4);
-  Serial.write(fb->buf, len);
+  // Send in small chunks and wait for the UART to drain. One huge write from PSRAM
+  // was losing bytes in the middle of each frame.
+  const uint8_t *p = fb->buf;
+  size_t left = len;
+  while (left > 0) {
+    size_t n = left > 256 ? 256 : left;
+    size_t w = Serial.write(p, n);
+    p += w;
+    left -= w;
+  }
+  Serial.flush();
   esp_camera_fb_return(fb);
 }
