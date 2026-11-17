@@ -9,7 +9,7 @@ from collections.abc import Callable, Sequence
 from robot_arm.config import RobotConfig
 from robot_arm.control.joint_controller import JointController
 from robot_arm.control.safety import SafetyManager
-from robot_arm.hardware.driver import PWMDriver
+from robot_arm.hardware.driver import NoOpDriver, PWMDriver
 from robot_arm.hardware.servo import Servo
 from robot_arm.motion.planner import TrajectoryPlanner
 from robot_arm.motion.trajectory import run_trajectory
@@ -83,6 +83,17 @@ class ArmController:
         self._safety.authorize_pwm()
         home = tuple(joint.servo.calibration.home_deg for joint in self._joints)
         logger.info("startup snap to stored home pulses")
+        self._write_all(home)
+
+    def startup_simulation(self, home_deg: Sequence[float] | None = None) -> None:
+        """Initialize commanded state without any physical-hardware path."""
+        if not isinstance(self._driver, NoOpDriver):
+            raise TypeError("startup_simulation requires NoOpDriver")
+        self._safety.authorize_pwm()
+        home = tuple(home_deg) if home_deg is not None else tuple(
+            joint.servo.calibration.home_deg for joint in self._joints
+        )
+        logger.info("simulation-only startup at saved home; PWM hardware disabled")
         self._write_all(home)
 
     def home(self) -> None:

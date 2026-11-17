@@ -26,7 +26,7 @@ from pathlib import Path
 
 from robot_arm.config import RobotConfig
 from robot_arm.control.arm_controller import STARTUP_WARNING, ArmController
-from robot_arm.hardware.driver import PCA9685Driver
+from robot_arm.hardware.driver import NoOpDriver, PCA9685Driver
 from robot_arm.utils.errors import RobotArmError
 from robot_arm.vision.esp32_serial import SerialCamera
 
@@ -63,7 +63,7 @@ input[type=number]{width:78px}
 canvas{width:100%;height:480px;background:#0e1014;border-radius:8px;touch-action:none;cursor:grab}
 pre{background:#111;border-radius:6px;padding:8px;font-size:12px;white-space:pre-wrap;margin:6px 0 0}
 </style></head><body>
-<h1>Robot Arm Control</h1>
+<h1>Robot Arm Control <small id="mode"></small></h1>
 <div id="msg"></div>
 <div class="row">
 <button class="warn" id="start">Snap to home (startup)</button>
@@ -93,6 +93,7 @@ x <input type="number" step="1" id="ikx" value="0"> y <input type="number" step=
 </div></div>
 <script>
 const ZERO=__ZERO__,SIGN=__SIGN__;
+const SIMULATION_ONLY=__SIMULATION_ONLY__;
 let state=null,sliders=[],pending={},timer=null,model=null,ikPrev=null;
 const $=id=>document.getElementById(id);
 const msg=t=>{$('msg').textContent=t||''};
@@ -233,11 +234,14 @@ $('iksolve').onclick=async()=>{
   $('ikout').textContent=`target TCP ${f1(r.target_mm)} mm\\nservo J0-J4 ${f3(r.servo.slice(0,5))} deg\\nchange      ${f3(r.change)} deg\\npulses us   [${r.pulses.join(', ')}]\\nposition error ${r.err_mm.toFixed(3)} mm`+(r.axis_err_deg===null?'':`\\ndirection error ${r.axis_err_deg.toFixed(2)} deg`)+'\\nPreview only: green model. Press "Move arm to solution" to execute.';
 };
 $('ikgo').onclick=async()=>{
-  if(!ikPrev||!confirm('Move the real arm to the IK solution? Check for collisions first.'))return;
+  const question=SIMULATION_ONLY?'Move the simulated arm to the IK solution?':'Move the real arm to the IK solution? Check for collisions first.';
+  if(!ikPrev||!confirm(question))return;
   const a={};for(let i=0;i<5;i++)a[i]=ikPrev[i];
   const r=await api('/api/move',{angles:a});
   if(!r.error){for(let i=0;i<5;i++)setSlider(i,ikPrev[i]);ikPrev=null;$('ikgo').disabled=true}};
 api('/api/model').then(m=>{model=m;$('ikstat').textContent=m.ik_ok?'(arm_ik_v2.py loaded)':'(IK unavailable: '+m.ik_error+')';$('iksolve').disabled=!m.ik_ok});
+$('mode').textContent=SIMULATION_ONLY?'— SIMULATION ONLY (motors disabled)':'';
+if(SIMULATION_ONLY){$('start').style.display='none';$('start').disabled=true}
 refresh();setInterval(refresh,300);
 function camTick(){
   const c=state&&state.camera;
@@ -358,12 +362,15 @@ class ArmService:
         ik: IKBridge,
         *,
         saved_home: bool,
+        home_degrees: list[float] | None = None,
+        simulation_only: bool = False,
         camera: SerialCamera | None = None,
     ) -> None:
         self.arm = arm
         self.camera = camera
         self.ik = ik
-        self.home_deg = [j.home_deg for j in arm.config.joints]
+        self.simulation_only = simulation_only
+        self.home_deg = list(home_degrees) if home_degrees is not None else [j.home_deg for j in arm.config.joints]
         self.home_source = "(saved in configs/home.txt)" if saved_home else "(from joints.yaml)"
         self.home_version = 0
         self._lock = threading.Lock()
@@ -400,6 +407,7 @@ class ArmService:
             "joints": joints,
             "home_source": self.home_source,
             "home_version": self.home_version,
+            "simulation_only": self.simulation_only,
             "camera": None
             if self.camera is None
             else {
@@ -498,6 +506,10 @@ def load_model(ik: IKBridge) -> dict:
             "right": {"xyz": grip["right_finger_joint"]["xyz_m"]},
         },
         "tcp": ik.tcp(),
+        "servo_mapping": {
+            "zero_deg": ik.zero()[:5],
+            "sign": ik.sign()[:5],
+        },
         "grip": {
             "closed_deg": GRIPPER_CLOSED_DEG,
             "open_deg": GRIPPER_OPEN_DEG,
@@ -515,6 +527,7 @@ def make_handler(service: ArmService) -> type[BaseHTTPRequestHandler]:
         .replace("__GC__", json.dumps(GRIPPER_CLOSED_DEG))
         .replace("__GO__", json.dumps(GRIPPER_OPEN_DEG))
         .replace("__GW__", json.dumps(GRIPPER_MAX_WIDTH_M))
+        .replace("__SIMULATION_ONLY__", json.dumps(service.simulation_only))
         .replace("__WARNING__", STARTUP_WARNING.replace("`", "'"))
         .encode()
     )
@@ -529,7 +542,10 @@ def make_handler(service: ArmService) -> type[BaseHTTPRequestHandler]:
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
-            self.wfile.write(body)
+            try:
+                self.wfile.write(body)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
 
         def _json(self, payload: dict, code: int = 200) -> None:
             self._send(code, json.dumps(payload).encode(), "application/json")
@@ -620,6 +636,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--camera-port", default="auto", help="ESP32-CAM serial port, or auto")
     parser.add_argument("--camera-baud", type=int, default=921600, help="must match BAUD in the .ino")
     parser.add_argument("--no-camera", action="store_true")
+    parser.add_argument(
+        "--simulation-only",
+        action="store_true",
+        help="never open PWM hardware; sliders and IK update commanded state only",
+    )
     args = parser.parse_args(argv)
 
     config = RobotConfig.load(args.config)
@@ -627,7 +648,7 @@ def main(argv: list[str] | None = None) -> int:
     if saved is not None:
         config = apply_home(config, saved)
         logger.info("home loaded from %s", HOME_FILE)
-    driver = PCA9685Driver(config)
+    driver = NoOpDriver() if args.simulation_only else PCA9685Driver(config)
     camera = None
     if not args.no_camera:
         try:
@@ -642,15 +663,25 @@ def main(argv: list[str] | None = None) -> int:
         ArmController(config, driver),
         IKBridge(),
         saved_home=saved is not None,
+        home_degrees=saved,
+        simulation_only=args.simulation_only,
         camera=camera,
     )
+    if args.simulation_only:
+        # Authorize the normal trajectory/state machinery against a driver
+        # that cannot touch I2C. This keeps hardware mode's confirmation
+        # behavior unchanged while making simulation ready immediately.
+        service.arm.startup_simulation(service.home_deg)
     server = ThreadingHTTPServer((args.host, args.port), make_handler(service))
     server.daemon_threads = True
     print(f"GUI on http://{args.host}:{args.port}  (tunnel: ssh -L {args.port}:localhost:{args.port} <user>@<pi>)")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\nstopped. The last pulses were sent.")
+        if args.simulation_only:
+            print("\nstopped. Simulation state discarded; motors were never opened.")
+        else:
+            print("\nstopped. The last pulses were sent.")
     finally:
         if camera is not None:
             camera.stop()
