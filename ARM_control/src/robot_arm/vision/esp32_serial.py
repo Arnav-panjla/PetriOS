@@ -34,6 +34,7 @@ class SerialCamera:
         self.bytes_rx = 0
         self.bad_frames = 0
         self.light = False
+        self.brightness = 20.0  # percent, flash LED PWM
         self._link = None
         self._wlock = threading.Lock()
         self.tail = b""  # last bytes received, for diagnosis
@@ -72,9 +73,24 @@ class SerialCamera:
         if link is None or not self.connected:
             raise OSError("ESP32-CAM is not connected")
         with self._wlock:
+            if on:
+                link.write(self._brightness_cmd())
             link.write(b"L" if on else b"l")
             link.flush()
         self.light = on
+
+    def _brightness_cmd(self) -> bytes:
+        return b"B" + bytes([round(self.brightness * 2.55)])
+
+    def set_brightness(self, pct: float) -> None:
+        """Set flash LED brightness 0..100 percent (applies live if the light is on)."""
+        link = self._link
+        if link is None or not self.connected:
+            raise OSError("ESP32-CAM is not connected")
+        self.brightness = min(100.0, max(0.0, float(pct)))
+        with self._wlock:
+            link.write(self._brightness_cmd())
+            link.flush()
 
     def _publish(self, jpeg: bytes) -> None:
         with self._cond:

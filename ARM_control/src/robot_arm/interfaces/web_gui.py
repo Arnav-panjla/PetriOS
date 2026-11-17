@@ -19,6 +19,7 @@ import dataclasses
 import importlib.util
 import json
 import logging
+import math
 import socket
 import threading
 import time
@@ -40,7 +41,7 @@ HOME_FILE = RobotConfig.default_dir() / "home.txt"
 
 # Used only when the IK module cannot be imported. Same values as arm_ik_v2.py
 # (J0-J4) plus the gripper servo, so the model still draws.
-FALLBACK_ZERO = [90.0, 39.0, 58.0, 66.5, 116.25]
+FALLBACK_ZERO = [90.0, 75.0, 58.0, 66.5, 116.25]  # J1 re-mounted: +36 deg
 FALLBACK_SIGN = [1.0, 1.0, -1.0, 1.0, -1.0]
 # Gripper (joint 5), measured: 167.5 deg is fully closed, 10 deg is fully open,
 # and the fully open jaw width is 3.5 cm. Home is the open position.
@@ -103,6 +104,9 @@ table{border-collapse:collapse} td{padding:3px 8px 3px 0}
   <div class="grp"><label><input type="checkbox" id="live" checked> live drag</label>
    <label>soften <input type="number" id="soften" min="0" value="" placeholder="yaml"> ms/deg</label>
    <button class="gray" id="setsoft">set</button></div>
+  <div class="grp"><label><input type="checkbox" id="flooron" checked> Z floor guard</label>
+   <label>floor <input type="number" id="floormm" step="1" value="5" style="width:60px"> mm</label>
+   <span id="tcpz" class="muted">TCP z -</span></div>
  </div>
  <div id="msg"></div>
 </div>
@@ -119,9 +123,10 @@ table{border-collapse:collapse} td{padding:3px 8px 3px 0}
    <div class="legend muted">q = sign &times; (servo&deg; &minus; zero) from arm_ik_v2.py. Gripper: 167.5&deg; closed, 10&deg; open (3.5 cm).</div>
   </div></details>
   <details class="card" id="ik" open><summary>Inverse kinematics <small id="ikstat"></small></summary><div class="body">
-   <div class="form"><select id="ikmode"><option value="abs">absolute TCP (base_link, mm)</option><option value="rel">relative to current TCP (mm)</option></select>
-    x <input type="number" step="1" id="ikx" value="0"> y <input type="number" step="1" id="iky" value="0"> z <input type="number" step="1" id="ikz" value="0">
+   <div class="form"><select id="ikmode"><option value="abs">absolute TCP (x, y, z mm, base_link)</option><option value="rel">relative to current TCP (dx, dy, dz mm)</option><option value="cyl_rel">relative cylindrical (dr mm, d&theta; deg, dz mm)</option><option value="cyl_abs">absolute cylindrical (r mm, &theta; deg, z mm)</option></select>
+    <span id="lx">x</span> <input type="number" step="1" id="ikx" value="0"> <span id="ly">y</span> <input type="number" step="1" id="iky" value="0"> <span id="lz">z</span> <input type="number" step="1" id="ikz" value="0">
     <label><input type="checkbox" id="ikhold"> hold tool direction</label></div>
+   <div class="muted" style="font-size:12px;margin:2px 0 6px" id="tcpnow">TCP now: -</div>
    <button class="gray" id="ikfill">Fill from current TCP</button>
    <button id="iksolve">Solve (preview only)</button>
    <button class="warn" id="ikgo" disabled>Move arm to solution</button>
@@ -169,7 +174,8 @@ async function flush(){
   clearTimeout(timer);timer=null;
   if(!Object.keys(pending).length)return;
   const p=pending;pending={};
-  await api('/api/move',{angles:p});
+  const r=await api('/api/move',{angles:p});
+  if(r.error&&/^blocked/.test(r.error)&&state){pending={};state.joints.forEach(j=>setSlider(j.index,j.commanded_deg))}
 }
 async function refresh(){
   try{
@@ -179,6 +185,11 @@ async function refresh(){
     s.joints.forEach(j=>{$('c'+j.index).textContent=j.commanded_deg.toFixed(1);$('q'+j.index).textContent=(j.index===5?openFrac(j.commanded_deg)*model_w()*1000:qOf(j.index,j.commanded_deg)).toFixed(1)});
     $('homeinfo').textContent='home (servo deg): ['+s.joints.map(j=>j.home_deg.toFixed(1)).join(', ')+']  '+s.home_source;
     if(document.activeElement!==$('soften')&&s.soften_ms!==null)$('soften').value=s.soften_ms;
+    if(document.activeElement!==$('floormm'))$('floormm').value=s.floor_mm;
+    $('flooron').checked=s.floor_enabled;
+    const tz=$('tcpz');
+    if(!s.guard_available){tz.textContent='z guard unavailable (no IK/numpy)';tz.style.color='#ff6b6b'}
+    else if(s.tcp_z_mm!==null){tz.textContent='TCP z '+s.tcp_z_mm.toFixed(1)+' mm';tz.style.color=s.tcp_z_mm<s.floor_mm?'#ff6b6b':''}
   }catch(e){msg('connection lost')}
 }
 let homeVersion=-1;
@@ -186,7 +197,9 @@ $('start').onclick=async()=>{
   if(!confirm(`__WARNING__`))return;
   const r=await api('/api/startup',{confirmed:true});
   if(!r.error){state=null;refresh();}};
-$('home').onclick=async()=>{await api('/api/home',{});state.joints.forEach(j=>setSlider(j.index,j.home_deg))};
+$('home').onclick=async()=>{const r=await api('/api/home',{});if(!r.error)state.joints.forEach(j=>setSlider(j.index,j.home_deg))};
+$('flooron').onchange=()=>api('/api/floor',{enabled:$('flooron').checked});
+$('floormm').onchange=()=>api('/api/floor',{floor_mm:+$('floormm').value});
 $('reset').onclick=()=>state.joints.forEach(j=>setSlider(j.index,j.commanded_deg));
 $('sethome').onclick=async()=>{
   if(!confirm('Save the current commanded pose as the new home? It is written to configs/home.txt and used on every start.'))return;
@@ -265,16 +278,24 @@ cv.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(0.3,Math.min(5,
 (function loop(){draw();requestAnimationFrame(loop)})();
 /* ---- IK ---- */
 const f3=a=>'['+a.map(v=>v.toFixed(3)).join(', ')+']',f1=a=>'['+a.map(v=>v.toFixed(1)).join(', ')+']';
+const IKLAB={abs:['x (mm)','y (mm)','z (mm)'],rel:['dx (mm)','dy (mm)','dz (mm)'],cyl_rel:['dr (mm)','d\u03b8 (deg)','dz (mm)'],cyl_abs:['r (mm)','\u03b8 (deg)','z (mm)']};
+function cylOf(t){const a=model.joints[0].xyz,dx=t[0]-a[0],dy=t[1]-a[1];return[Math.hypot(dx,dy)*1000,Math.atan2(dx,-dy)*180/Math.PI,t[2]*1000]} // r mm, theta deg, z mm (0 = base -Y, CCW+)
+function setIkLabels(){const m=$('ikmode').value;['x','y','z'].forEach((k,i)=>$('l'+k).textContent=IKLAB[m][i])}
+setInterval(()=>{if(!model||!state||!sliders.length)return;
+  const t=fk(state.joints.map(j=>j.commanded_deg)).tcp,c=cylOf(t);
+  $('tcpnow').textContent=`TCP now: x ${(t[0]*1000).toFixed(1)} y ${(t[1]*1000).toFixed(1)} z ${(t[2]*1000).toFixed(1)} mm  |  r ${c[0].toFixed(1)} mm  \u03b8 ${c[1].toFixed(1)}\u00b0  z ${c[2].toFixed(1)} mm`},400);
 $('ikfill').onclick=()=>{
-  if($('ikmode').value==='rel'){['x','y','z'].forEach(k=>$('ik'+k).value=0);return}
+  const m=$('ikmode').value;
+  if(m==='rel'||m==='cyl_rel'){['x','y','z'].forEach(k=>$('ik'+k).value=0);return}
+  if(m==='cyl_abs'){const c=cylOf(fk(state.joints.map(j=>j.commanded_deg)).tcp);['x','y','z'].forEach((k,i)=>$('ik'+k).value=+c[i].toFixed(1));return}
   const t=fk(state.joints.map(j=>j.commanded_deg)).tcp;['x','y','z'].forEach((k,i)=>$('ik'+k).value=+(t[i]*1000).toFixed(1));};
-$('ikmode').onchange=()=>$('ikfill').click();
+$('ikmode').onchange=()=>{setIkLabels();$('ikfill').click()};setIkLabels();
 $('iksolve').onclick=async()=>{
   $('ikgo').disabled=true;ikPrev=null;$('ikout').textContent='solving...';
   const r=await api('/api/ik/solve',{mode:$('ikmode').value,x:+$('ikx').value,y:+$('iky').value,z:+$('ikz').value,hold:$('ikhold').checked});
   if(r.error){$('ikout').textContent='IK: '+r.error;return}
   ikPrev=r.servo;$('ikgo').disabled=false;
-  $('ikout').textContent=`target TCP ${f1(r.target_mm)} mm\\nservo J0-J4 ${f3(r.servo.slice(0,5))} deg\\nchange      ${f3(r.change)} deg\\npulses us   [${r.pulses.join(', ')}]\\nposition error ${r.err_mm.toFixed(3)} mm`+(r.axis_err_deg===null?'':`\\ndirection error ${r.axis_err_deg.toFixed(2)} deg`)+'\\nPreview only: green model. Press "Move arm to solution" to execute.';
+  $('ikout').textContent=`target TCP ${f1(r.target_mm)} mm  (r ${r.target_cyl[0].toFixed(1)} mm, \u03b8 ${r.target_cyl[1].toFixed(1)}\u00b0, z ${r.target_cyl[2].toFixed(1)} mm)\\nservo J0-J4 ${f3(r.servo.slice(0,5))} deg\\nchange      ${f3(r.change)} deg\\npulses us   [${r.pulses.join(', ')}]\\nposition error ${r.err_mm.toFixed(3)} mm`+(r.axis_err_deg===null?'':`\\ndirection error ${r.axis_err_deg.toFixed(2)} deg`)+'\\nPreview only: green model. Press "Move arm to solution" to execute.';
 };
 $('ikgo').onclick=async()=>{
   const question=SIMULATION_ONLY?'Move the simulated arm to the IK solution?':'Move the real arm to the IK solution? Check for collisions first.';
@@ -287,6 +308,60 @@ $('mode').textContent=SIMULATION_ONLY?'— SIMULATION ONLY (motors disabled)':''
 if(SIMULATION_ONLY){$('start').style.display='none';$('start').disabled=true}
 refresh();setInterval(refresh,300);
 const CAMS=[['esp','ESP32-CAM (USB)'],['pi','Pi camera (CSI)']];
+const OPTS=[['detect','Detect QR'],['focus','Focus meter'],['denoise','Denoise'],['sharpen','Sharpen'],['clahe','Contrast (CLAHE)'],['show_filtered','Show filtered image'],['wechat','WeChat detector'],['robust','Robust decode']];
+function optsHtml(k){
+  const boxes=OPTS.map(([o,t])=>`<label style="display:inline-block;margin:2px 10px 2px 0;font-size:12px"><input type="checkbox" data-cam="${k}" data-opt="${o}"> ${t}</label>`).join('');
+  const pi=k==='pi'?`<div class="form" style="margin-top:6px;font-size:12px">capture:
+    <select id="pi_size"></select> sharp <input type="number" id="pi_sharp" step="0.5" min="0" max="16" style="width:60px">
+    contrast <input type="number" id="pi_contrast" step="0.1" min="0" max="16" style="width:60px">
+    denoise <select id="pi_denoise"></select> zoom <input type="number" id="pi_zoom" step="0.5" min="1" max="4" style="width:60px">
+    <button class="mini" id="pi_apply">Apply (restarts camera)</button></div>`:'';
+  const rot=`<div style="margin:4px 0;font-size:12px">rotate (clockwise): <select data-rot="${k}"><option>0</option><option>90</option><option>180</option><option>270</option></select>
+    <button class="mini" data-rotstep="${k}">+90&deg;</button></div>`;
+  return `<details class="card" style="margin-top:8px"><summary>Image options <small>every feature is a toggle</small></summary><div class="body">${rot}${boxes}<div id="params_${k}" style="margin-top:8px"></div>${pi}</div></details>`;
+}
+function buildParams(k,c){
+  const box=$('params_'+k);if(!box||!c.options||!c.options.param_spec)return;
+  let html='<div class="muted" style="font-size:12px;margin-bottom:4px">Tune filter values <button class="mini" data-preset="'+k+'">reset to defaults</button></div>',grp='';
+  c.options.param_spec.forEach(s=>{
+    if(s.group!==grp){grp=s.group;html+=`<div style="font-size:12px;margin-top:6px;color:#9ab"><b>${grp}</b></div>`}
+    html+=`<div style="display:flex;align-items:center;gap:8px;font-size:12px"><span style="width:170px">${s.label}</span>
+      <input type="range" style="flex:1;height:20px" data-param="${s.key}" data-pcam="${k}" min="${s.min}" max="${s.max}" step="${s.step}" value="${c.options.params[s.key]}">
+      <span class="val" style="width:44px;text-align:right" id="pv_${k}_${s.key}">${c.options.params[s.key]}</span></div>`;
+  });
+  box.innerHTML=html;
+  const timers={};
+  box.querySelectorAll('[data-param]').forEach(e=>e.oninput=()=>{
+    $('pv_'+k+'_'+e.dataset.param).textContent=e.value;
+    clearTimeout(timers[e.dataset.param]);
+    timers[e.dataset.param]=setTimeout(()=>api('/api/camera/param',{cam:k,key:e.dataset.param,value:+e.value}),120)});
+  box.querySelector('[data-preset]').onclick=()=>api('/api/camera/param',{cam:k,key:'_reset',value:0});
+}
+function wireOpts(k,c){
+  buildParams(k,c);
+  const rs=document.querySelector(`[data-rot="${k}"]`);
+  rs.onchange=()=>api('/api/camera/rotate',{cam:k,deg:+rs.value});
+  document.querySelector(`[data-rotstep="${k}"]`).onclick=()=>api('/api/camera/rotate',{cam:k,deg:(+rs.value+90)%360});
+  document.querySelectorAll(`[data-cam="${k}"]`).forEach(e=>e.onchange=()=>api('/api/camera/options',{cam:k,key:e.dataset.opt,value:e.checked}));
+  if(k==='pi'&&c.pi){
+    $('pi_size').innerHTML=c.pi.sizes.map(v=>`<option>${v}</option>`).join('');
+    $('pi_denoise').innerHTML=c.pi.denoise_modes.map(v=>`<option>${v}</option>`).join('');
+    $('pi_size').value=c.pi.size;$('pi_sharp').value=c.pi.sharpness;$('pi_contrast').value=c.pi.contrast;
+    $('pi_denoise').value=c.pi.denoise;$('pi_zoom').value=c.pi.zoom;
+    $('pi_apply').onclick=()=>api('/api/camera/pi',{size:$('pi_size').value,sharpness:+$('pi_sharp').value,contrast:+$('pi_contrast').value,denoise:$('pi_denoise').value,zoom:+$('pi_zoom').value});
+  }
+}
+function syncOpts(k,c){
+  if(!c.options)return;
+  const rs=document.querySelector(`[data-rot="${k}"]`);if(rs&&document.activeElement!==rs)rs.value=String(c.options.rotate);
+  document.querySelectorAll(`[data-pcam="${k}"]`).forEach(e=>{
+    const v=c.options.params&&c.options.params[e.dataset.param];
+    if(v!==undefined&&document.activeElement!==e&&+e.value!==v){e.value=v;$('pv_'+k+'_'+e.dataset.param).textContent=v}});
+  document.querySelectorAll(`[data-cam="${k}"]`).forEach(e=>{
+    if(document.activeElement!==e)e.checked=!!c.options[e.dataset.opt];
+    if(e.dataset.opt==='wechat'&&!c.options.wechat_available){e.disabled=true;e.title='needs opencv-contrib'}
+  });
+}
 async function pullCam(k){ // ask for a frame newer than the last one shown; never queues
   let seq=-1,url=null;
   for(;;){
@@ -309,15 +384,21 @@ function camTick(){
     const c=cs[k];if(!c)return;
     let d=$('cam_'+k);
     if(!d){d=document.createElement('div');d.id='cam_'+k;d.style.flex='1 1 220px';
-      d.innerHTML=`<b>${title}</b> <small id="cs_${k}"></small>${k==='esp'?' <button class="mini" id="light">Light: off</button>':''}<br><img id="img_${k}" style="width:100%;max-height:420px;object-fit:contain;background:#000;border-radius:6px"><div id="ql_${k}" style="font-size:13px;margin-top:4px"></div>`;
-      box.appendChild(d);pullCam(k);
-      if(k==='esp')$('light').onclick=()=>api('/api/camera/light',{on:!(state.cameras.esp&&state.cameras.esp.light)})}
-    if(k==='esp'&&$('light')){const on=!!c.light;$('light').textContent='Light: '+(on?'ON':'off');$('light').style.background=on?'#d9a62b':''}
+      d.innerHTML=`<b>${title}</b> <small id="cs_${k}"></small>${k==='esp'?' <button class="mini" id="light">Light: off</button> <input type="range" id="lbr" min="0" max="100" step="1" value="20" style="width:110px;vertical-align:middle" title="light brightness"> <span id="lbrv" class="muted">20%</span>':''}<br><img id="img_${k}" style="width:100%;max-height:420px;object-fit:contain;background:#000;border-radius:6px"><div id="ql_${k}" style="font-size:13px;margin-top:4px"></div>${optsHtml(k)}`;
+      box.appendChild(d);pullCam(k);wireOpts(k,c);
+      if(k==='esp'){$('light').onclick=()=>api('/api/camera/light',{on:!(state.cameras.esp&&state.cameras.esp.light)});
+        let lt=null,ld=false;const lb=$('lbr');
+        lb.oninput=()=>{ld=true;$('lbrv').textContent=lb.value+'%';if(!lt)lt=setTimeout(()=>{lt=null;api('/api/camera/light',{brightness:+lb.value})},80)};
+        lb.onchange=async()=>{clearTimeout(lt);lt=null;await api('/api/camera/light',{brightness:+lb.value});ld=false};
+        lb.onpointerdown=()=>{ld=true};lb.onpointerup=()=>{ld=false};window.lbDrag=()=>ld}}
+    syncOpts(k,c);
+    if(k==='esp'&&$('light')){const on=!!c.light;$('light').textContent='Light: '+(on?'ON':'off');$('light').style.background=on?'#d9a62b':'';
+      if(c.brightness!=null&&!(window.lbDrag&&window.lbDrag())){$('lbr').value=c.brightness;$('lbrv').textContent=Math.round(c.brightness)+'%'}}
     $('cs_'+k).textContent=c.connected?`(${c.port||'auto'}, ${c.fps.toFixed(1)} fps)`+(c.bytes===0?' - nothing received':(c.fps===0?' - no valid frames':'')):'(not connected: '+(c.error||'waiting')+')';
   });
-  let h='<tr style="color:#999"><td>camera</td><td>size</td><td>fps</td><td>jpeg KB</td><td>proc ms</td><td>QR found %</td><td>QR decoded %</td></tr>';
+  let h='<tr style="color:#999"><td>camera</td><td>size</td><td>fps</td><td>jpeg KB</td><td>proc ms</td><td>detect ms</td><td>focus (peak)</td><td>QR found %</td><td>QR decoded %</td></tr>';
   CAMS.forEach(([k,title])=>{const c=cs[k];if(!c||!c.stats)return;const t=c.stats;
-    h+=`<tr><td>${title}</td><td>${t.width}x${t.height}</td><td>${c.fps.toFixed(1)}</td><td>${t.jpeg_kb}</td><td>${t.proc_ms}</td><td>${t.seen_pct}</td><td>${t.decoded_pct}</td></tr>`});
+    h+=`<tr><td>${title}</td><td>${t.width}x${t.height}</td><td>${c.fps.toFixed(1)}</td><td>${t.jpeg_kb}</td><td>${t.proc_ms}</td><td>${t.detect_ms}</td><td>${c.options&&c.options.focus?t.focus+' ('+t.focus_peak+')':'-'}</td><td>${t.seen_pct}</td><td>${t.decoded_pct}</td></tr>`});
   $('camcmp').innerHTML=h;
 }
 function qrTick(){
@@ -337,6 +418,26 @@ function qrTick(){
 setInterval(camTick,1000);setInterval(qrTick,500);
 </script></body></html>
 """
+
+
+def to_cylindrical(xyz_m, axis_xy_m) -> tuple[float, float, float]:
+    """(x, y, z) in base_link metres -> (r mm, theta deg, z mm) about the joint_1 axis.
+
+    theta = 0 along base -Y (the way the arm reaches); positive is counter-clockwise
+    seen from +z, the same sense as joint 0 in arm_ik_v2.py.
+    """
+    dx, dy = xyz_m[0] - axis_xy_m[0], xyz_m[1] - axis_xy_m[1]
+    return (math.hypot(dx, dy) * 1000.0, math.degrees(math.atan2(dx, -dy)), xyz_m[2] * 1000.0)
+
+
+def from_cylindrical(r_mm: float, theta_deg: float, z_mm: float, axis_xy_m) -> list[float]:
+    """Inverse of to_cylindrical. Returns (x, y, z) in base_link metres."""
+    r, theta = r_mm / 1000.0, math.radians(theta_deg)
+    return [
+        axis_xy_m[0] + r * math.sin(theta),
+        axis_xy_m[1] - r * math.cos(theta),
+        z_mm / 1000.0,
+    ]
 
 
 class IKBridge:
@@ -382,6 +483,26 @@ class IKBridge:
         T, _ = mod.fk(mod.to_q(np.array(servo_deg[:5])), np.array(mod.TCP_ESTIMATE))
         return [float(v) for v in T[:3, 3]]
 
+    def path_min_z(self, start: list[float], target: list[float], steps: int = 20) -> tuple[float, float, list[float]] | None:
+        """Lowest TCP z (mm) along the straight joint-space path start -> target.
+
+        Returns (start_z_mm, min_z_mm, servo pose of the minimum), or None when FK is unavailable.
+        The trajectory planner uses one shared tau, so the path is exactly this line.
+        """
+        if not self.ok:
+            return None
+        z0 = None
+        best: tuple[float, list[float]] | None = None
+        for i in range(steps + 1):
+            s = i / steps
+            pose = [a + s * (b - a) for a, b in zip(start[:5], target[:5], strict=True)]
+            z = self.tcp_position(pose)[2] * 1000.0
+            if z0 is None:
+                z0 = z
+            if best is None or z < best[0]:
+                best = (z, pose)
+        return z0, best[0], best[1]
+
     def solve(self, current: list[float], body: dict) -> dict:
         if not self.ok:
             raise ValueError(f"IK unavailable ({self.error}). pip install numpy scipy")
@@ -395,18 +516,34 @@ class IKBridge:
                 f"{mod.SOFT_LIMIT_DEG.tolist()}; move the sliders inside them first"
             )
         tcp = np.array(mod.TCP_ESTIMATE)
-        vec = np.array([float(body["x"]), float(body["y"]), float(body["z"])]) / 1000.0  # mm in
-        if body.get("mode") == "rel":
-            T0, _ = mod.fk(mod.to_q(start), tcp)
-            target = T0[:3, 3] + vec
+        a, b, c = float(body["x"]), float(body["y"]), float(body["z"])  # mm / mm / mm or deg
+        mode = body.get("mode", "abs")
+        axis = [float(v) for v in mod.JOINT_ORIGINS[0][:2]]  # joint_1 axis (parallel to z)
+        T0, _ = mod.fk(mod.to_q(start), tcp)
+        cur = T0[:3, 3]
+        cur_cyl = to_cylindrical(cur, axis)
+        if mode == "abs":
+            target = np.array([a, b, c]) / 1000.0
+        elif mode == "rel":
+            target = cur + np.array([a, b, c]) / 1000.0
+        elif mode in ("cyl_rel", "cyl_abs"):
+            if mode == "cyl_rel":  # dr, dtheta, dz from the current gripper TCP
+                r, theta, z = cur_cyl[0] + a, cur_cyl[1] + b, cur_cyl[2] + c
+            else:
+                r, theta, z = a, b, c
+            if r < 0:
+                raise ValueError(f"radius would be {r:.1f} mm; r must be >= 0")
+            target = np.array(from_cylindrical(r, theta, z, axis))
         else:
-            target = vec
+            raise ValueError(f"unknown IK mode: {mode}")
         hold = bool(body.get("hold"))
         q, _T, err, axis_err = mod.solve(target, tcp, start, hold)
         servo = mod.to_servo(q)
         pulses = [mod.pwm(i, float(v)) for i, v in enumerate(servo)]
         return {
             "target_mm": [float(v) * 1000.0 for v in target],
+            "cur_cyl": list(cur_cyl),
+            "target_cyl": list(to_cylindrical(target, axis)),
             "servo": [float(v) for v in servo] + [float(current[5])],
             "change": [float(v) for v in servo - start],
             "pulses": pulses,
@@ -464,6 +601,8 @@ class ArmService:
         self._wake = threading.Event()
         self._error: str | None = None
         self._busy = False
+        self.floor_enabled = True
+        self.floor_mm = 5.0
         threading.Thread(target=self._worker, daemon=True).start()
 
     def source(self, name: str):
@@ -494,6 +633,10 @@ class ArmService:
             "ready": self.arm.ready,
             "busy": self._busy,
             "soften_ms": self.arm.soften_ms,
+            "floor_enabled": self.floor_enabled,
+            "floor_mm": self.floor_mm,
+            "guard_available": self.ik.ok,
+            "tcp_z_mm": self.tcp_z_mm(),
             "joints": joints,
             "home_source": self.home_source,
             "home_version": self.home_version,
@@ -507,6 +650,9 @@ class ArmService:
                     "bytes": cam.bytes_rx,
                     "bad": cam.bad_frames,
                     "light": getattr(cam, "light", None),
+                    "brightness": getattr(cam, "brightness", None),
+                    "options": view.options() if view is not None else None,
+                    "pi": cam.settings() if hasattr(cam, "settings") else None,
                     "qr": view.results() if view is not None else None,
                     "stats": view.stats() if view is not None else None,
                 }
@@ -527,13 +673,36 @@ class ArmService:
             if not low <= deg <= high:
                 raise ValueError(f"joint {index} angle {deg:.1f} outside {low:g}..{high:g}")
         with self._lock:
+            target = self.commanded()
+            for index, deg in {**self._pending, **angles}.items():
+                target[index] = deg
+            self._check_floor(target)
             self._pending.update(angles)
         self._wake.set()
+
+    def _check_floor(self, target: list[float]) -> None:
+        """Raise when the straight joint path to target dips the TCP below the floor."""
+        if not self.floor_enabled:
+            return
+        result = self.ik.path_min_z(self.commanded(), target)
+        if result is None:
+            return
+        start_z, min_z, _pose = result
+        # a move that starts below the floor may still climb out; it just may not go lower
+        if min_z < self.floor_mm and min_z < start_z - 1e-6:
+            raise ValueError(
+                f"blocked: TCP would reach z={min_z:.1f} mm (floor {self.floor_mm:g} mm)"
+            )
+
+    def tcp_z_mm(self) -> float | None:
+        pos = self.ik.tcp_position(self.commanded())
+        return None if pos is None else pos[2] * 1000.0
 
     def home(self) -> None:
         if not self.arm.ready:
             raise RobotArmError("press 'Snap to home (startup)' first")
         with self._lock:
+            self._check_floor(list(self.home_deg))
             self._pending.clear()
             self.arm.move_all(list(self.home_deg))
 
@@ -735,14 +904,42 @@ def make_handler(service: ArmService) -> type[BaseHTTPRequestHandler]:
                     result["file"] = service.set_home()
                 elif self.path == "/api/ik/solve":
                     result = service.ik.solve(service.commanded(), body)
+                elif self.path == "/api/camera/options":
+                    entry = service.cameras.get(str(body.get("cam")))
+                    if entry is None or entry[1] is None:
+                        raise RobotArmError("camera has no image processing")
+                    entry[1].set_option(str(body["key"]), bool(body["value"]))
+                elif self.path == "/api/camera/param":
+                    entry = service.cameras.get(str(body.get("cam")))
+                    if entry is None or entry[1] is None:
+                        raise RobotArmError("camera has no image processing")
+                    entry[1].set_param(str(body["key"]), body.get("value", 0))
+                elif self.path == "/api/camera/rotate":
+                    entry = service.cameras.get(str(body.get("cam")))
+                    if entry is None or entry[1] is None:
+                        raise RobotArmError("camera has no image processing")
+                    entry[1].set_rotate(int(body["deg"]))
+                elif self.path == "/api/camera/pi":
+                    entry = service.cameras.get("pi")
+                    if entry is None or not hasattr(entry[0], "apply"):
+                        raise RobotArmError("Pi camera not available")
+                    entry[0].apply(**body)
                 elif self.path == "/api/camera/light":
                     entry = service.cameras.get("esp")
                     if entry is None or not hasattr(entry[0], "set_light"):
                         raise RobotArmError("ESP32 camera not available")
                     try:
-                        entry[0].set_light(bool(body.get("on")))
+                        if "brightness" in body:
+                            entry[0].set_brightness(float(body["brightness"]))
+                        if "on" in body:
+                            entry[0].set_light(bool(body["on"]))
                     except OSError as exc:
                         raise RobotArmError(str(exc)) from exc
+                elif self.path == "/api/floor":
+                    if "floor_mm" in body:
+                        service.floor_mm = float(body["floor_mm"])
+                    if "enabled" in body:
+                        service.floor_enabled = bool(body["enabled"])
                 elif self.path == "/api/soften":
                     ms = body.get("ms")
                     if ms is not None and float(ms) < 0:
@@ -769,8 +966,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--camera-rotate", type=int, default=90, choices=[0, 90, 180, 270], help="clockwise degrees")
     parser.add_argument("--no-pi-camera", action="store_true")
     parser.add_argument("--pi-rotate", type=int, default=0, choices=[0, 90, 180, 270], help="clockwise degrees")
-    parser.add_argument("--pi-width", type=int, default=640)
-    parser.add_argument("--pi-height", type=int, default=480)
+    parser.add_argument("--pi-width", type=int, default=1280)
+    parser.add_argument("--pi-height", type=int, default=720)
     parser.add_argument("--pi-fps", type=int, default=15)
     parser.add_argument("--no-qr", action="store_true", help="rotate only, no QR detection")
     parser.add_argument(

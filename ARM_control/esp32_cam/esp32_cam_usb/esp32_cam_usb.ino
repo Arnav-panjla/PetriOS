@@ -5,7 +5,8 @@
  * The Pi side (robot_arm/vision/esp32_serial.py) finds the magic, reads the JPEG
  * and serves it in the arm GUI. Nothing else is ever printed on the serial port,
  * so do NOT add Serial.print() debug output here.
- * The Pi can send 'L' / 'l' to switch the flash LED (GPIO4) on / off.
+ * The Pi can send 'L' / 'l' to switch the flash LED (GPIO4) on / off, and
+ * 'B' followed by one byte (0..255) to set its PWM brightness.
  *
  * Arduino IDE setup:
  *   Board:  "AI Thinker ESP32-CAM"   (esp32 by Espressif board package)
@@ -43,9 +44,35 @@
 
 static const uint8_t MAGIC[4] = {0xAA, 0x55, 0xAA, 0x55};
 
+// Flash LED is PWM driven. Camera XCLK uses LEDC channel 0 / timer 0, so use channel 1.
+#define LED_CHANNEL  1
+#define LED_FREQ     5000
+#define LED_BITS     8
+static uint8_t ledBrightness = 51;   // 0..255, default about 20 percent
+static bool    ledOn = false;
+
+static void ledWrite(uint8_t duty) {
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
+  ledcWrite(FLASH_LED_GPIO, duty);
+#else
+  ledcWrite(LED_CHANNEL, duty);
+#endif
+}
+
+static void ledInit() {
+#if defined(ESP_ARDUINO_VERSION_MAJOR) && ESP_ARDUINO_VERSION_MAJOR >= 3
+  ledcAttachChannel(FLASH_LED_GPIO, LED_FREQ, LED_BITS, LED_CHANNEL);
+#else
+  ledcSetup(LED_CHANNEL, LED_FREQ, LED_BITS);
+  ledcAttachPin(FLASH_LED_GPIO, LED_CHANNEL);
+#endif
+  ledWrite(0);
+}
+
+static void ledApply() { ledWrite(ledOn ? ledBrightness : 0); }
+
 void setup() {
-  pinMode(FLASH_LED_GPIO, OUTPUT);
-  digitalWrite(FLASH_LED_GPIO, LOW);      // flash LED off
+  ledInit();                              // flash LED off
   Serial.begin(BAUD);
 
   camera_config_t config;
@@ -74,8 +101,8 @@ void setup() {
   if (esp_camera_init(&config) != ESP_OK) {
     // Blink the flash LED forever so a failed init is visible without serial output.
     while (true) {
-      digitalWrite(FLASH_LED_GPIO, HIGH); delay(150);
-      digitalWrite(FLASH_LED_GPIO, LOW);  delay(150);
+      ledWrite(255); delay(150);
+      ledWrite(0);   delay(150);
     }
   }
   sensor_t *s = esp_camera_sensor_get();
@@ -84,11 +111,17 @@ void setup() {
 }
 
 void loop() {
-  // Commands from the Pi: 'L' = flash LED on, 'l' = off.
+  // Commands from the Pi: 'L' = flash LED on, 'l' = off, 'B'+byte = brightness 0..255.
+  static bool wantBrightness = false;
   while (Serial.available() > 0) {
     int c = Serial.read();
-    if (c == 'L') digitalWrite(FLASH_LED_GPIO, HIGH);
-    else if (c == 'l') digitalWrite(FLASH_LED_GPIO, LOW);
+    if (wantBrightness) {
+      ledBrightness = (uint8_t)c;
+      wantBrightness = false;
+      ledApply();
+    } else if (c == 'B') wantBrightness = true;
+    else if (c == 'L') { ledOn = true;  ledApply(); }
+    else if (c == 'l') { ledOn = false; ledApply(); }
   }
   camera_fb_t *fb = esp_camera_fb_get();
   if (!fb) {

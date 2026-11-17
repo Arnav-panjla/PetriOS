@@ -13,7 +13,7 @@ dependencies = ["PyYAML"]
 [project.optional-dependencies]
 hardware = ["adafruit-circuitpython-servokit"]
 dev = ["pytest"]
-vision = ["pyserial", "numpy", "scipy", "opencv-python-headless"]
+vision = ["pyserial", "numpy", "scipy", "opencv-contrib-python-headless"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

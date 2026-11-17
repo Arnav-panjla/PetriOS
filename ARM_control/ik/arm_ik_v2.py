@@ -24,9 +24,10 @@ from scipy.optimize import least_squares
 
 # Observed physical servo angles (DEGREES) in the earlier horizontal pose.
 # We tentatively associate this pose with URDF zero joint angles.
-URDF_ZERO_SERVO = np.array([90., 39., 58., 66.5, 116.25])
+# J1 (index 1) was re-mounted on the hardware: every J1 servo angle is now old + 36 deg.
+URDF_ZERO_SERVO = np.array([90., 75., 58., 66.5, 116.25])
 # NEW folded pose supplied by user; starting point of numerical IK.
-START_SERVO = np.array([90.5, 35.5, 58., 151.5, 116.])
+START_SERVO = np.array([90.5, 71.5, 58., 151.5, 116.])
 GRIPPER_SERVO = 167.5  # separate J5 motor; 167.5 deg fully closed, 10 deg fully open (3.5 cm)
 
 # Provisional physical servo rotation signs relative to URDF joint axes.

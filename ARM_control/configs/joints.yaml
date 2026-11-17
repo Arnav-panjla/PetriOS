@@ -13,7 +13,7 @@ joints:
     channel: 11
     min_us: 500
     max_us: 2700
-    home_us: 900
+    home_us: 1340  # J1 horn re-mounted: +36 deg vs the old 900 us (32.73 deg)
   - index: 2
     channel: 12
     min_us: 500
