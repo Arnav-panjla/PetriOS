@@ -26,11 +26,17 @@ def find_port() -> str | None:
 class SerialCamera:
     """Reads JPEG frames from the ESP32-CAM and reconnects if the cable drops."""
 
-    def __init__(self, port: str | None = None, baud: int = 921600) -> None:
+    def __init__(self, port: str | None = None, baud: int = 460800) -> None:
         self.port = port
         self.baud = baud
         self.connected = False
         self.last_error: str | None = None
+        self.bytes_rx = 0
+        self.bad_frames = 0
+        self.light = False
+        self._link = None
+        self._wlock = threading.Lock()
+        self.tail = b""  # last bytes received, for diagnosis
         self._cond = threading.Condition()
         self._jpeg: bytes | None = None
         self._seq = 0
@@ -60,6 +66,16 @@ class SerialCamera:
             self._cond.wait_for(lambda: self._seq != last_seq or self._stop, timeout)
             return self._jpeg, self._seq
 
+    def set_light(self, on: bool) -> None:
+        """Switch the ESP32-CAM flash LED. Raises OSError when not connected."""
+        link = self._link
+        if link is None or not self.connected:
+            raise OSError("ESP32-CAM is not connected")
+        with self._wlock:
+            link.write(b"L" if on else b"l")
+            link.flush()
+        self.light = on
+
     def _publish(self, jpeg: bytes) -> None:
         with self._cond:
             self._jpeg = jpeg
@@ -85,6 +101,7 @@ class SerialCamera:
                 link.dtr = False
                 link.rts = False
                 link.open()
+                self._link = link
                 self.connected, self.last_error = True, None
                 logger.info("camera connected on %s @ %d", port, self.baud)
                 self._read_frames(link)
@@ -96,10 +113,12 @@ class SerialCamera:
     def _read_frames(self, link) -> None:
         buf = bytearray()
         while not self._stop:
-            chunk = link.read(max(1, link.in_waiting) or 1)
+            chunk = link.read(max(1, link.in_waiting))
             if not chunk:
                 continue
             buf += chunk
+            self.bytes_rx += len(chunk)
+            self.tail = (self.tail + chunk)[-32:]
             while True:
                 start = buf.find(MAGIC)
                 if start < 0:
@@ -120,3 +139,39 @@ class SerialCamera:
                 del buf[:end]
                 if jpeg[:2] == b"\xff\xd8" and jpeg[-2:] == b"\xff\xd9":
                     self._publish(jpeg)
+                else:
+                    self.bad_frames += 1
+
+
+def probe(port: str | None, baud: int, seconds: float = 4.0) -> None:
+    """Print what the port is sending. Stop the GUI first (one reader per port)."""
+    import serial
+
+    port = port or find_port()
+    print(f"port {port} baud {baud}")
+    link = serial.Serial()
+    link.port, link.baudrate, link.timeout = port, baud, 0.5
+    link.dtr = False
+    link.rts = False
+    link.open()
+    data = b""
+    end = time.monotonic() + seconds
+    while time.monotonic() < end:
+        data += link.read(4096)
+    link.close()
+    print(f"{len(data)} bytes, {data.count(MAGIC)} frame markers")
+    print("first 64 bytes:", data[:64])
+    if not data:
+        print("nothing received: firmware not running, camera init failed (flash LED blinks), or wrong port")
+    elif MAGIC not in data:
+        print("data but no frame marker: wrong baud, or firmware not flashed (boot text only)")
+
+
+if __name__ == "__main__":
+    import argparse
+
+    ap = argparse.ArgumentParser(description="Probe the ESP32-CAM serial stream.")
+    ap.add_argument("--port", default=None)
+    ap.add_argument("--baud", type=int, default=460800)
+    args = ap.parse_args()
+    probe(args.port, args.baud)

@@ -19,6 +19,7 @@ import dataclasses
 import importlib.util
 import json
 import logging
+import socket
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -29,6 +30,8 @@ from robot_arm.control.arm_controller import STARTUP_WARNING, ArmController
 from robot_arm.hardware.driver import NoOpDriver, PCA9685Driver
 from robot_arm.utils.errors import RobotArmError
 from robot_arm.vision.esp32_serial import SerialCamera
+from robot_arm.vision.pi_camera import PiCamera
+from robot_arm.vision.qr_view import QRView
 
 logger = logging.getLogger(__name__)
 
@@ -51,46 +54,85 @@ FALLBACK_TCP = [0.010023, -0.125002, 0.0015]
 PAGE = """<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Robot Arm</title><style>
-body{font-family:system-ui,sans-serif;background:#16181d;color:#e6e6e6;margin:12px auto;padding:0 12px;max-width:1400px}
-#layout{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}#left{flex:1 1 520px;min-width:320px}#right{flex:1 1 480px;position:sticky;top:8px}
-h1{font-size:20px} .row{background:#20242c;border-radius:8px;padding:10px 14px;margin:10px 0}
-.top{display:flex;justify-content:space-between;align-items:center;font-size:14px;flex-wrap:wrap;gap:6px}
-input[type=range]{width:100%;height:32px} button{padding:8px 14px;margin:4px 4px 4px 0;border:0;border-radius:6px;background:#3a6df0;color:#fff;font-size:14px;cursor:pointer}
-button:disabled{opacity:.4;cursor:default} button.warn{background:#d9822b} button.gray{background:#555} .val{font-variant-numeric:tabular-nums;font-weight:600}
-#msg{min-height:20px;color:#f0c36a;font-size:14px} small{color:#999}
-input[type=number],select{background:#111;color:#eee;border:1px solid #444;border-radius:4px;padding:4px}
-input[type=number]{width:78px}
-canvas{width:100%;height:480px;background:#0e1014;border-radius:8px;touch-action:none;cursor:grab}
-pre{background:#111;border-radius:6px;padding:8px;font-size:12px;white-space:pre-wrap;margin:6px 0 0}
+*{box-sizing:border-box}
+body{font-family:system-ui,sans-serif;background:#14161b;color:#e6e6e6;margin:0;padding:0 14px 24px}
+small,.muted{color:#8d94a3}
+#bar{position:sticky;top:0;z-index:10;background:#14161bf2;backdrop-filter:blur(6px);padding:10px 0 8px;border-bottom:1px solid #262b35;margin-bottom:12px}
+#bar .line{display:flex;gap:8px 14px;align-items:center;flex-wrap:wrap}
+#bar h1{font-size:18px;margin:0 8px 0 0;white-space:nowrap}
+#msg{min-height:18px;color:#f0c36a;font-size:13px;margin-top:6px}
+.grp{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding-left:14px;border-left:1px solid #2c323e}
+.grp:first-of-type{border-left:0;padding-left:0}
+.grp label{font-size:13px;color:#c9ced8;white-space:nowrap}
+#grid{display:grid;grid-template-columns:minmax(340px,5fr) minmax(380px,6fr);gap:14px;align-items:start}
+@media(max-width:900px){#grid{grid-template-columns:1fr}}
+.col{display:flex;flex-direction:column;gap:14px;min-width:0}
+.card{background:#1c2028;border:1px solid #262b35;border-radius:10px;padding:0}
+.card>summary{list-style:none;cursor:pointer;padding:10px 14px;font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px}
+.card>summary::-webkit-details-marker{display:none}
+.card>summary::before{content:"\\25BE";color:#8d94a3;font-size:12px}
+.card:not([open])>summary::before{content:"\\25B8"}
+.card>summary small{font-weight:400}
+.body{padding:0 14px 14px}
+.joint{padding:8px 0 10px;border-top:1px solid #262b35}
+.joint:first-child{border-top:0;padding-top:0}
+.jh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:13px}
+.jh b{font-size:14px}
+.jctl{display:flex;align-items:center;gap:6px}
+.jctl input[type=range]{flex:1;min-width:0;height:28px}
+button{padding:6px 12px;border:0;border-radius:6px;background:#3a6df0;color:#fff;font-size:13px;cursor:pointer}
+button.mini{padding:4px 9px;background:#3a404c}
+button:disabled{opacity:.4;cursor:default} button.warn{background:#d9822b} button.gray{background:#3a404c}
+.val{font-variant-numeric:tabular-nums;font-weight:600}
+input[type=number],select{background:#101318;color:#eee;border:1px solid #3a404c;border-radius:5px;padding:4px 6px;font-size:13px}
+input[type=number]{width:74px}
+canvas{width:100%;height:440px;background:#0e1014;border-radius:8px;touch-action:none;cursor:grab;display:block}
+.legend{font-size:12px;margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 4px 0 10px}
+.legend i:first-child{margin-left:0}
+.form{display:flex;gap:6px 10px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+pre{background:#101318;border-radius:6px;padding:8px;font-size:12px;white-space:pre-wrap;margin:8px 0 0}
+table{border-collapse:collapse} td{padding:3px 8px 3px 0}
 </style></head><body>
-<h1>Robot Arm Control <small id="mode"></small></h1>
-<div id="msg"></div>
-<div class="row">
-<button class="warn" id="start">Snap to home (startup)</button>
-<button id="home">Home (smooth)</button>
-<button class="gray" id="reset">Sliders = current</button>
-<button class="warn" id="sethome">Set current pose as new home</button>
-<label><input type="checkbox" id="live" checked> live drag</label>
-<label>&nbsp; soften <input type="number" id="soften" min="0" value="" placeholder="yaml"> ms/deg</label>
-<button class="gray" id="setsoft">set</button>
-<br><small id="homeinfo"></small>
-<br><small>Angles are commanded, not measured (no position feedback).</small>
+<div id="bar">
+ <div class="line">
+  <h1>Robot Arm <small id="mode"></small></h1>
+  <div class="grp"><button class="warn" id="start">Snap to home (startup)</button>
+   <button id="home">Home</button><button class="gray" id="reset">Sliders = current</button></div>
+  <div class="grp"><button class="warn" id="sethome">Set current pose as home</button></div>
+  <div class="grp"><label><input type="checkbox" id="live" checked> live drag</label>
+   <label>soften <input type="number" id="soften" min="0" value="" placeholder="yaml"> ms/deg</label>
+   <button class="gray" id="setsoft">set</button></div>
+ </div>
+ <div id="msg"></div>
 </div>
-<div id="layout"><div id="left"><div id="joints"></div></div>
-<div id="right"><canvas id="cv"></canvas>
-<small>Blue = commanded pose, amber = slider target, green = IK solution. Drag to rotate, wheel to zoom.
-Model angle q = sign &times; (servo&deg; &minus; zero), taken from arm_ik_v2.py. Joints 0-4 &rarr; joint_1..5. Gripper (J5): 167.5&deg; closed, 10&deg; open (3.5 cm).</small>
-<div class="row" id="camrow"><b>Gripper camera</b> <small id="camstat"></small><br>
-<img id="cam" alt="camera" style="width:100%;max-height:360px;object-fit:contain;background:#000;border-radius:6px"></div>
-<div class="row" id="ik"><b>Inverse kinematics</b> <small id="ikstat"></small><br>
-<select id="ikmode"><option value="abs">absolute TCP (base_link, mm)</option><option value="rel">relative to current TCP (mm)</option></select>
-x <input type="number" step="1" id="ikx" value="0"> y <input type="number" step="1" id="iky" value="0"> z <input type="number" step="1" id="ikz" value="0">
-<label><input type="checkbox" id="ikhold"> hold tool direction</label><br>
-<button class="gray" id="ikfill">Fill from current TCP</button>
-<button id="iksolve">Solve (preview only)</button>
-<button class="warn" id="ikgo" disabled>Move arm to solution</button>
-<pre id="ikout">TCP = estimated closed-fingertip midpoint. Solving never moves the arm.</pre></div>
-</div></div>
+<div id="grid">
+ <div class="col">
+  <details class="card" open><summary>Joints <small>commanded angles, not measured (no position feedback)</small></summary>
+   <div class="body"><div id="joints"></div><div class="muted" style="font-size:12px;margin-top:8px" id="homeinfo"></div></div></details>
+ </div>
+ <div class="col">
+  <details class="card" open><summary>3D model</summary><div class="body">
+   <canvas id="cv"></canvas>
+   <div class="legend muted"><i style="background:#4da3ff"></i>commanded <i style="background:#ffc850"></i>slider target <i style="background:#50e678"></i>IK solution
+    &nbsp;&middot; drag to rotate, wheel to zoom</div>
+   <div class="legend muted">q = sign &times; (servo&deg; &minus; zero) from arm_ik_v2.py. Gripper: 167.5&deg; closed, 10&deg; open (3.5 cm).</div>
+  </div></details>
+  <details class="card" id="ik" open><summary>Inverse kinematics <small id="ikstat"></small></summary><div class="body">
+   <div class="form"><select id="ikmode"><option value="abs">absolute TCP (base_link, mm)</option><option value="rel">relative to current TCP (mm)</option></select>
+    x <input type="number" step="1" id="ikx" value="0"> y <input type="number" step="1" id="iky" value="0"> z <input type="number" step="1" id="ikz" value="0">
+    <label><input type="checkbox" id="ikhold"> hold tool direction</label></div>
+   <button class="gray" id="ikfill">Fill from current TCP</button>
+   <button id="iksolve">Solve (preview only)</button>
+   <button class="warn" id="ikgo" disabled>Move arm to solution</button>
+   <pre id="ikout">TCP = estimated closed-fingertip midpoint. Solving never moves the arm.</pre>
+  </div></details>
+ </div>
+</div>
+<details class="card" id="camrow" open style="margin-top:14px"><summary>Cameras <small>ESP32-CAM vs Pi camera, same QR detector</small></summary><div class="body">
+ <div id="cams" style="display:flex;gap:12px;flex-wrap:wrap"></div>
+ <table id="camcmp" style="width:100%;font-size:12px;margin-top:10px"></table>
+</div></details>
 <script>
 const ZERO=__ZERO__,SIGN=__SIGN__;
 const SIMULATION_ONLY=__SIMULATION_ONLY__;
@@ -103,12 +145,13 @@ async function api(path,body){
 function build(s){
   const box=$('joints'); box.innerHTML=''; sliders=[];
   s.joints.forEach(j=>{
-    const d=document.createElement('div'); d.className='row';
-    d.innerHTML=`<div class="top"><b>Joint ${j.index}</b><small>ch ${j.channel} | home ${j.home_deg.toFixed(1)}&deg; | ${j.min_us}-${j.max_us} us</small>
-    <span>target <span class="val" id="t${j.index}">${j.commanded_deg.toFixed(1)}</span>&deg; &nbsp; now <span class="val" id="c${j.index}">${j.commanded_deg.toFixed(1)}</span>&deg; &nbsp; ${j.index===5?'opening <span class="val" id="q5">0</span> mm':'q <span class="val" id="q'+j.index+'">0</span>&deg;'}</span></div>
+    const d=document.createElement('div'); d.className='joint';
+    const role=['base','shoulder','elbow','wrist pitch','wrist roll','gripper'][j.index];
+    d.innerHTML=`<div class="jh"><span><b>J${j.index}</b> <span class="muted">${role} &middot; ch ${j.channel} &middot; home ${j.home_deg.toFixed(1)}&deg;</span></span>
+    <span>target <span class="val" id="t${j.index}">${j.commanded_deg.toFixed(1)}</span>&deg; &nbsp;now <span class="val" id="c${j.index}">${j.commanded_deg.toFixed(1)}</span>&deg; &nbsp;${j.index===5?'<span class="val" id="q5">0</span> mm':'q <span class="val" id="q'+j.index+'">0</span>&deg;'}</span></div>
+    <div class="jctl"><button class="mini" data-n="${j.index}" data-d="-1">&minus;1</button>
     <input type="range" min="${j.min_deg}" max="${j.max_deg}" step="0.5" value="${j.commanded_deg}" id="s${j.index}">
-    <div><button class="gray" data-h="${j.index}">home</button>
-    <button class="gray" data-n="${j.index}" data-d="-1">-1</button><button class="gray" data-n="${j.index}" data-d="1">+1</button></div>`;
+    <button class="mini" data-n="${j.index}" data-d="1">+1</button><button class="mini" data-h="${j.index}">home</button></div>`;
     box.appendChild(d);
     const sl=d.querySelector('input'); sliders[j.index]=sl;
     sl.addEventListener('input',()=>{$('t'+j.index).textContent=(+sl.value).toFixed(1); if($('live').checked)queue(j.index,+sl.value)});
@@ -243,13 +286,55 @@ api('/api/model').then(m=>{model=m;$('ikstat').textContent=m.ik_ok?'(arm_ik_v2.p
 $('mode').textContent=SIMULATION_ONLY?'— SIMULATION ONLY (motors disabled)':'';
 if(SIMULATION_ONLY){$('start').style.display='none';$('start').disabled=true}
 refresh();setInterval(refresh,300);
-function camTick(){
-  const c=state&&state.camera;
-  if(!c){$('camstat').textContent='(disabled)';return}
-  if(!$('cam').getAttribute('src'))$('cam').src='/camera.mjpg';
-  $('camstat').textContent=c.connected?`(${c.port||'auto'}, ${c.fps.toFixed(1)} fps)`:'(not connected: '+(c.error||'waiting')+')';
+const CAMS=[['esp','ESP32-CAM (USB)'],['pi','Pi camera (CSI)']];
+async function pullCam(k){ // ask for a frame newer than the last one shown; never queues
+  let seq=-1,url=null;
+  for(;;){
+    try{
+      const r=await fetch('/camera.jpg?src='+k+'&seq='+seq+'&t='+Date.now(),{cache:'no-store'});
+      if(r.status===200){
+        seq=+r.headers.get('X-Seq');
+        const u=URL.createObjectURL(await r.blob());
+        const img=$('img_'+k);img.src=u;
+        if(url)URL.revokeObjectURL(url);url=u;
+      }else if(r.status===404){await new Promise(z=>setTimeout(z,2000))}
+      else{await new Promise(z=>setTimeout(z,100))}
+    }catch(e){await new Promise(z=>setTimeout(z,1000))}
+  }
 }
-setInterval(camTick,1000);
+function camTick(){
+  const cs=state&&state.cameras,box=$('cams');
+  if(!cs||!Object.keys(cs).length){box.textContent='cameras disabled';return}
+  CAMS.forEach(([k,title])=>{
+    const c=cs[k];if(!c)return;
+    let d=$('cam_'+k);
+    if(!d){d=document.createElement('div');d.id='cam_'+k;d.style.flex='1 1 220px';
+      d.innerHTML=`<b>${title}</b> <small id="cs_${k}"></small>${k==='esp'?' <button class="mini" id="light">Light: off</button>':''}<br><img id="img_${k}" style="width:100%;max-height:420px;object-fit:contain;background:#000;border-radius:6px"><div id="ql_${k}" style="font-size:13px;margin-top:4px"></div>`;
+      box.appendChild(d);pullCam(k);
+      if(k==='esp')$('light').onclick=()=>api('/api/camera/light',{on:!(state.cameras.esp&&state.cameras.esp.light)})}
+    if(k==='esp'&&$('light')){const on=!!c.light;$('light').textContent='Light: '+(on?'ON':'off');$('light').style.background=on?'#d9a62b':''}
+    $('cs_'+k).textContent=c.connected?`(${c.port||'auto'}, ${c.fps.toFixed(1)} fps)`+(c.bytes===0?' - nothing received':(c.fps===0?' - no valid frames':'')):'(not connected: '+(c.error||'waiting')+')';
+  });
+  let h='<tr style="color:#999"><td>camera</td><td>size</td><td>fps</td><td>jpeg KB</td><td>proc ms</td><td>QR found %</td><td>QR decoded %</td></tr>';
+  CAMS.forEach(([k,title])=>{const c=cs[k];if(!c||!c.stats)return;const t=c.stats;
+    h+=`<tr><td>${title}</td><td>${t.width}x${t.height}</td><td>${c.fps.toFixed(1)}</td><td>${t.jpeg_kb}</td><td>${t.proc_ms}</td><td>${t.seen_pct}</td><td>${t.decoded_pct}</td></tr>`});
+  $('camcmp').innerHTML=h;
+}
+function qrTick(){
+  const cs=state&&state.cameras;if(!cs)return;
+  CAMS.forEach(([k])=>{
+    const q=cs[k]&&cs[k].qr,box=$('ql_'+k);if(!box)return;
+    box.innerHTML='';
+    if(!q){return}
+    if(!q.length){box.innerHTML='<small>no QR code in view</small>';return}
+    q.forEach(c=>{
+      const d=document.createElement('div');d.style.color=c.ok?'#6e6':'#f77';
+      if(c.ok&&/^https?:\\/\\//i.test(c.text)){const a=document.createElement('a');a.href=c.text;a.target='_blank';a.rel='noopener';a.textContent=c.text;a.style.color='#8cf';d.appendChild(a)}
+      else d.appendChild(document.createTextNode(c.text));
+      box.appendChild(d)});
+  });
+}
+setInterval(camTick,1000);setInterval(qrTick,500);
 </script></body></html>
 """
 
@@ -364,10 +449,11 @@ class ArmService:
         saved_home: bool,
         home_degrees: list[float] | None = None,
         simulation_only: bool = False,
-        camera: SerialCamera | None = None,
+        cameras: dict | None = None,
     ) -> None:
         self.arm = arm
-        self.camera = camera
+        # name -> (raw camera, QRView or None); the stream shows the view when present
+        self.cameras = cameras or {}
         self.ik = ik
         self.simulation_only = simulation_only
         self.home_deg = list(home_degrees) if home_degrees is not None else [j.home_deg for j in arm.config.joints]
@@ -379,6 +465,10 @@ class ArmService:
         self._error: str | None = None
         self._busy = False
         threading.Thread(target=self._worker, daemon=True).start()
+
+    def source(self, name: str):
+        entry = self.cameras.get(name)
+        return None if entry is None else (entry[1] or entry[0])
 
     def commanded(self) -> list[float]:
         return [j.commanded_deg for j in self.arm._joints]
@@ -408,13 +498,19 @@ class ArmService:
             "home_source": self.home_source,
             "home_version": self.home_version,
             "simulation_only": self.simulation_only,
-            "camera": None
-            if self.camera is None
-            else {
-                "connected": self.camera.connected,
-                "fps": self.camera.fps,
-                "port": self.camera.port,
-                "error": self.camera.last_error,
+            "cameras": {
+                name: {
+                    "connected": cam.connected,
+                    "fps": cam.fps,
+                    "port": cam.port,
+                    "error": cam.last_error,
+                    "bytes": cam.bytes_rx,
+                    "bad": cam.bad_frames,
+                    "light": getattr(cam, "light", None),
+                    "qr": view.results() if view is not None else None,
+                    "stats": view.stats() if view is not None else None,
+                }
+                for name, (cam, view) in self.cameras.items()
             },
             "error": error,
         }
@@ -550,10 +646,21 @@ def make_handler(service: ArmService) -> type[BaseHTTPRequestHandler]:
         def _json(self, payload: dict, code: int = 200) -> None:
             self._send(code, json.dumps(payload).encode(), "application/json")
 
+        def _query(self, key: str, default: str = "") -> str:
+            if "?" in self.path:
+                for part in self.path.split("?", 1)[1].split("&"):
+                    if part.startswith(key + "="):
+                        return part[len(key) + 1 :]
+            return default
+
+        def _src(self):
+            return service.source(self._query("src", "esp"))
+
         def _stream_camera(self) -> None:
-            cam = service.camera
+            cam = self._src()
             if cam is None:
                 return self._json({"error": "camera disabled"}, 404)
+            self.connection.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 65536)
             self.send_response(200)
             self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame")
             self.send_header("Cache-Control", "no-store")
@@ -582,11 +689,26 @@ def make_handler(service: ArmService) -> type[BaseHTTPRequestHandler]:
             elif self.path == "/api/status":
                 self._json(service.status())
             elif self.path.startswith("/camera.jpg"):
-                jpeg = service.camera.latest() if service.camera else None
-                if jpeg is None:
-                    self._json({"error": "no camera frame"}, 503)
+                # Pull model: the browser asks for a frame newer than the one it has.
+                # Nothing queues up, so a slow link shows old-by-one-frame, never seconds old.
+                src = self._src()
+                if src is None:
+                    return self._json({"error": "camera disabled"}, 404)
+                try:
+                    last = int(self._query("seq", "-1"))
+                except ValueError:
+                    last = -1
+                jpeg, seq = src.wait_frame(last, timeout=1.0)
+                if jpeg is None or seq == last:
+                    self._json({"error": "no new frame"}, 503)
                 else:
-                    self._send(200, jpeg, "image/jpeg")
+                    self.send_response(200)
+                    self.send_header("Content-Type", "image/jpeg")
+                    self.send_header("Content-Length", str(len(jpeg)))
+                    self.send_header("Cache-Control", "no-store")
+                    self.send_header("X-Seq", str(seq))
+                    self.end_headers()
+                    self.wfile.write(jpeg)
             elif self.path.startswith("/camera.mjpg"):
                 self._stream_camera()
             else:
@@ -613,6 +735,14 @@ def make_handler(service: ArmService) -> type[BaseHTTPRequestHandler]:
                     result["file"] = service.set_home()
                 elif self.path == "/api/ik/solve":
                     result = service.ik.solve(service.commanded(), body)
+                elif self.path == "/api/camera/light":
+                    entry = service.cameras.get("esp")
+                    if entry is None or not hasattr(entry[0], "set_light"):
+                        raise RobotArmError("ESP32 camera not available")
+                    try:
+                        entry[0].set_light(bool(body.get("on")))
+                    except OSError as exc:
+                        raise RobotArmError(str(exc)) from exc
                 elif self.path == "/api/soften":
                     ms = body.get("ms")
                     if ms is not None and float(ms) < 0:
@@ -634,8 +764,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--host", default="127.0.0.1", help="use 0.0.0.0 to skip the SSH tunnel (insecure)")
     parser.add_argument("--config", type=Path, default=None)
     parser.add_argument("--camera-port", default="auto", help="ESP32-CAM serial port, or auto")
-    parser.add_argument("--camera-baud", type=int, default=921600, help="must match BAUD in the .ino")
+    parser.add_argument("--camera-baud", type=int, default=460800, help="must match BAUD in the .ino")
     parser.add_argument("--no-camera", action="store_true")
+    parser.add_argument("--camera-rotate", type=int, default=90, choices=[0, 90, 180, 270], help="clockwise degrees")
+    parser.add_argument("--no-pi-camera", action="store_true")
+    parser.add_argument("--pi-rotate", type=int, default=0, choices=[0, 90, 180, 270], help="clockwise degrees")
+    parser.add_argument("--pi-width", type=int, default=640)
+    parser.add_argument("--pi-height", type=int, default=480)
+    parser.add_argument("--pi-fps", type=int, default=15)
+    parser.add_argument("--no-qr", action="store_true", help="rotate only, no QR detection")
     parser.add_argument(
         "--simulation-only",
         action="store_true",
@@ -649,23 +786,35 @@ def main(argv: list[str] | None = None) -> int:
         config = apply_home(config, saved)
         logger.info("home loaded from %s", HOME_FILE)
     driver = NoOpDriver() if args.simulation_only else PCA9685Driver(config)
-    camera = None
+    cameras: dict = {}
     if not args.no_camera:
         try:
-            import serial  # noqa: F401  (pyserial)
-
-            port = None if args.camera_port == "auto" else args.camera_port
-            camera = SerialCamera(port, args.camera_baud)
-            camera.start()
-        except ImportError:
-            logger.warning("pyserial missing, camera disabled (pip install pyserial)")
+            esp = SerialCamera(None if args.camera_port == "auto" else args.camera_port, args.camera_baud)
+        except Exception:
+            esp = None
+        pi = None if args.no_pi_camera else PiCamera(args.pi_width, args.pi_height, args.pi_fps)
+        for name, cam, rotate in (("esp", esp, args.camera_rotate), ("pi", pi, args.pi_rotate)):
+            if cam is None:
+                continue
+            try:
+                cam.start()
+            except ImportError:
+                logger.warning("%s camera disabled (missing dependency, e.g. pyserial)", name)
+                continue
+            view = None
+            try:
+                view = QRView(cam, rotate, detect=not args.no_qr)
+                view.start()
+            except ImportError:
+                logger.warning("opencv/numpy missing: no rotation or QR (pip install numpy opencv-python-headless)")
+            cameras[name] = (cam, view)
     service = ArmService(
         ArmController(config, driver),
         IKBridge(),
         saved_home=saved is not None,
         home_degrees=saved,
         simulation_only=args.simulation_only,
-        camera=camera,
+        cameras=cameras,
     )
     if args.simulation_only:
         # Authorize the normal trajectory/state machinery against a driver
@@ -683,8 +832,10 @@ def main(argv: list[str] | None = None) -> int:
         else:
             print("\nstopped. The last pulses were sent.")
     finally:
-        if camera is not None:
-            camera.stop()
+        for cam, view in cameras.values():
+            if view is not None:
+                view.stop()
+            cam.stop()
         server.server_close()
         driver.close()
     return 0

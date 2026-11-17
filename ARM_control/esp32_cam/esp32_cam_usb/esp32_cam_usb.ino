@@ -5,6 +5,7 @@
  * The Pi side (robot_arm/vision/esp32_serial.py) finds the magic, reads the JPEG
  * and serves it in the arm GUI. Nothing else is ever printed on the serial port,
  * so do NOT add Serial.print() debug output here.
+ * The Pi can send 'L' / 'l' to switch the flash LED (GPIO4) on / off.
  *
  * Arduino IDE setup:
  *   Board:  "AI Thinker ESP32-CAM"   (esp32 by Espressif board package)
@@ -83,6 +84,12 @@ void setup() {
 }
 
 void loop() {
+  // Commands from the Pi: 'L' = flash LED on, 'l' = off.
+  while (Serial.available() > 0) {
+    int c = Serial.read();
+    if (c == 'L') digitalWrite(FLASH_LED_GPIO, HIGH);
+    else if (c == 'l') digitalWrite(FLASH_LED_GPIO, LOW);
+  }
   camera_fb_t *fb = esp_camera_fb_get();
   if (!fb) {
     delay(10);
