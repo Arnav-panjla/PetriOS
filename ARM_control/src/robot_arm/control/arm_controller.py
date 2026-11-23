@@ -174,13 +174,21 @@ class ArmController:
         targets[index] = degrees
         self.move_all(targets)
 
-    def move_all(self, degrees: Sequence[float], duration_s: float | None = None) -> None:
+    def move_all(
+        self,
+        degrees: Sequence[float],
+        duration_s: float | None = None,
+        snap: Sequence[int] = (),
+    ) -> None:
+        """Interpolated move of all joints. Joints listed in snap jump straight to their target."""
         self._safety.ensure_pwm_allowed()
         if len(degrees) != len(self._joints):
             raise ValueError(
                 f"expected {len(self._joints)} angles, got {len(degrees)}"
             )
         targets = [self._safety.clamp_angle(angle) for angle in degrees]
+        for index in snap:
+            self._joints[index].command(targets[index])
         starts = tuple(joint.commanded_deg for joint in self._joints)
         joints = tuple(joint.servo.calibration for joint in self._joints)
         trajectory = self._planner.plan(

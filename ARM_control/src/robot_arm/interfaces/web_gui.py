@@ -31,7 +31,6 @@ from robot_arm.control.arm_controller import STARTUP_WARNING, ArmController
 from robot_arm.hardware.driver import NoOpDriver, PCA9685Driver
 from robot_arm.utils.errors import RobotArmError
 from robot_arm.vision.esp32_serial import SerialCamera
-from robot_arm.vision.pi_camera import PiCamera
 from robot_arm.vision.qr_view import QRView
 
 logger = logging.getLogger(__name__)
@@ -55,89 +54,173 @@ FALLBACK_TCP = [0.010023, -0.125002, 0.0015]
 PAGE = """<!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Robot Arm</title><style>
+:root{color-scheme:dark;--bg:#12151a;--panel:#1a1e25;--well:#0f1217;--line:#272d37;--line2:#363d4a;--tx:#e8eaee;--tx2:#c3c9d4;--mut:#8b93a3;--acc:#4da3ff;--acc-bg:#2f6fd6;--warn:#e0902f;--bad:#ff7b72;--ok:#5fd68a;--r:8px}
 *{box-sizing:border-box}
-body{font-family:system-ui,sans-serif;background:#14161b;color:#e6e6e6;margin:0;padding:0 14px 24px}
-small,.muted{color:#8d94a3}
-#bar{position:sticky;top:0;z-index:10;background:#14161bf2;backdrop-filter:blur(6px);padding:10px 0 8px;border-bottom:1px solid #262b35;margin-bottom:12px}
-#bar .line{display:flex;gap:8px 14px;align-items:center;flex-wrap:wrap}
-#bar h1{font-size:18px;margin:0 8px 0 0;white-space:nowrap}
-#msg{min-height:18px;color:#f0c36a;font-size:13px;margin-top:6px}
-.grp{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding-left:14px;border-left:1px solid #2c323e}
-.grp:first-of-type{border-left:0;padding-left:0}
-.grp label{font-size:13px;color:#c9ced8;white-space:nowrap}
-#grid{display:grid;grid-template-columns:minmax(340px,5fr) minmax(380px,6fr);gap:14px;align-items:start}
+html{scrollbar-color:#3a4150 transparent;scrollbar-width:thin}
+body{font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--tx);margin:0;padding:0 16px 32px;accent-color:var(--acc)}
+::selection{background:#2f6fd699}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:4px}
+small,.muted{color:var(--mut)}
+#mode{font-size:11px;font-weight:600;color:var(--warn);background:#e0902f1f;border:1px solid #e0902f55;border-radius:99px;padding:1px 9px}
+#mode:empty{display:none}
+#msg{display:none;margin-top:8px;padding:7px 11px;border-radius:6px;font-size:13px;color:#ffd7d3;background:#ff7b7220;border:1px solid #ff7b7255}
+#msg:not(:empty){display:block}
+.grp{display:flex;gap:6px 12px;align-items:center;flex-wrap:wrap;padding:4px 8px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.grp label{font-size:13px;color:var(--tx2);white-space:nowrap;display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.grp input[type=checkbox],.form input[type=checkbox]{width:15px;height:15px;margin:0}
+#tcpz{font-variant-numeric:tabular-nums;font-size:13px;min-width:92px}
+#grid{display:grid;grid-template-columns:minmax(380px,6fr) minmax(380px,5fr);gap:16px;align-items:start}
 @media(max-width:900px){#grid{grid-template-columns:1fr}}
-.col{display:flex;flex-direction:column;gap:14px;min-width:0}
-.card{background:#1c2028;border:1px solid #262b35;border-radius:10px;padding:0}
-.card>summary{list-style:none;cursor:pointer;padding:10px 14px;font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.card .card{background:var(--well)}
+.card>summary{list-style:none;cursor:pointer;padding:11px 14px;font-weight:600;font-size:14px;display:flex;align-items:baseline;gap:8px;border-radius:var(--r);user-select:none}
+.card>summary:hover{background:#ffffff08}
 .card>summary::-webkit-details-marker{display:none}
-.card>summary::before{content:"\\25BE";color:#8d94a3;font-size:12px}
-.card:not([open])>summary::before{content:"\\25B8"}
-.card>summary small{font-weight:400}
-.body{padding:0 14px 14px}
-.joint{padding:8px 0 10px;border-top:1px solid #262b35}
-.joint:first-child{border-top:0;padding-top:0}
-.jh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:13px}
+.card>summary::before{content:"";flex:none;align-self:center;width:6px;height:6px;border-right:1.5px solid var(--mut);border-bottom:1.5px solid var(--mut);transform:rotate(45deg) translate(-2px,-2px);transition:transform .2s cubic-bezier(.16,1,.3,1)}
+.card:not([open])>summary::before{transform:rotate(-45deg)}
+.card>summary small{font-weight:400;font-size:12px}
+.body{padding:2px 14px 14px}
+.joint{padding:10px 0 12px;border-top:1px solid var(--line)}
+.joint:first-child{border-top:0;padding-top:2px}
+.jh{display:flex;justify-content:space-between;align-items:baseline;gap:4px 12px;flex-wrap:wrap;font-size:13px;margin-bottom:2px}
 .jh b{font-size:14px}
 .jctl{display:flex;align-items:center;gap:6px}
-.jctl input[type=range]{flex:1;min-width:0;height:28px}
-button{padding:6px 12px;border:0;border-radius:6px;background:#3a6df0;color:#fff;font-size:13px;cursor:pointer}
-button.mini{padding:4px 9px;background:#3a404c}
-button:disabled{opacity:.4;cursor:default} button.warn{background:#d9822b} button.gray{background:#3a404c}
+.jctl input[type=range]{flex:1;min-width:0;height:32px;cursor:pointer}
+button{padding:7px 13px;border:1px solid transparent;border-radius:6px;background:var(--acc-bg);color:#fff;font:inherit;font-size:13px;font-weight:550;cursor:pointer;transition:background-color .15s,transform .1s}
+button:hover:not(:disabled){background:#3b7de6}
+button:active:not(:disabled){transform:translateY(1px)}
+button.mini{padding:4px 9px;min-width:34px;background:#2b313c;color:var(--tx2);font-weight:500}
+button.mini:hover:not(:disabled){background:#38404d;color:#fff}
+button.gray{background:#2b313c;color:var(--tx2)}
+button.gray:hover:not(:disabled){background:#38404d;color:#fff}
+button.warn{background:#c47a22}
+button.warn:hover:not(:disabled){background:#d98a2c}
+button:disabled{opacity:.4;cursor:not-allowed}
 .val{font-variant-numeric:tabular-nums;font-weight:600}
-input[type=number],select{background:#101318;color:#eee;border:1px solid #3a404c;border-radius:5px;padding:4px 6px;font-size:13px}
-input[type=number]{width:74px}
-canvas{width:100%;height:440px;background:#0e1014;border-radius:8px;touch-action:none;cursor:grab;display:block}
-.legend{font-size:12px;margin-top:6px}
-.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 4px 0 10px}
+input[type=number],select{background:var(--well);color:var(--tx);border:1px solid var(--line2);border-radius:6px;padding:5px 7px;font:inherit;font-size:13px}
+input[type=number]:hover,select:hover{border-color:#4a5262}
+input[type=number]{width:74px;font-variant-numeric:tabular-nums}
+canvas{width:100%;height:440px;background:var(--well);border:1px solid var(--line);border-radius:var(--r);touch-action:none;cursor:grab;display:block}
+canvas:active{cursor:grabbing}
+.legend{font-size:12px;margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 5px 0 12px;vertical-align:-1px}
 .legend i:first-child{margin-left:0}
-.form{display:flex;gap:6px 10px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
-pre{background:#101318;border-radius:6px;padding:8px;font-size:12px;white-space:pre-wrap;margin:8px 0 0}
-table{border-collapse:collapse} td{padding:3px 8px 3px 0}
+.form{display:flex;gap:8px 10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+pre{background:var(--well);border:1px solid var(--line);border-radius:6px;padding:10px;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;margin:10px 0 0;color:var(--tx2)}
+table{border-collapse:collapse;font-variant-numeric:tabular-nums} td{padding:5px 10px 5px 0;border-bottom:1px solid var(--line)}
+#ik .form+.muted{font-variant-numeric:tabular-nums}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+#top{position:sticky;top:0;z-index:10;background:#12151aee;backdrop-filter:blur(8px);border-bottom:1px solid var(--line);margin-bottom:16px;padding-top:10px}
+#top .line{display:flex;gap:10px 20px;align-items:center;flex-wrap:wrap}
+#top h1{font-size:16px;font-weight:650;margin:0;white-space:nowrap;display:flex;align-items:center;gap:10px}
+#tabs{display:flex;gap:2px;margin-bottom:-1px}
+#tabs button{background:none;color:var(--mut);border:0;border-bottom:2px solid transparent;border-radius:0;padding:8px 14px;font-size:14px}
+#tabs button:hover{color:var(--tx);background:none}
+#tabs button[aria-selected=true]{color:var(--tx);border-bottom-color:var(--acc)}
+#tools{display:flex;gap:8px 10px;flex-wrap:wrap;padding:10px 0}
+.grp .gl{font-size:12px;font-weight:600;color:var(--mut);margin-right:2px}
+.view{position:sticky;top:calc(var(--barh,120px) + 16px)}
+@media(max-width:900px){.view{position:static}}
+.seg{display:inline-flex;background:var(--well);border:1px solid var(--line);border-radius:8px;padding:2px;margin:0 0 10px}
+.seg button{background:none;color:var(--mut);padding:5px 14px;border-radius:6px}
+.seg button:hover:not(:disabled){background:#ffffff0a;color:var(--tx)}
+.seg button[aria-pressed=true]{background:#2b313c;color:var(--tx)}
+.sec{font-size:12px;font-weight:600;color:var(--mut);margin:14px 0 2px}
+.sec:first-child{margin-top:2px}
+.jrow{display:grid;grid-template-columns:128px minmax(0,1fr) 112px 52px;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.jrow.hd{border-top:0;padding:0 0 2px;font-size:12px;color:var(--mut)}
+.sec+.jrow{border-top:0}
+.jl{display:flex;flex-direction:column;line-height:1.3;min-width:0}
+.jn{font-size:12px;font-variant-numeric:tabular-nums}
+.jrow .sl{width:100%;height:28px;cursor:pointer;margin:0}
+.vc{display:flex;align-items:center;gap:4px}
+.vc .unit{font-size:12px;color:var(--mut);min-width:20px}
+.vin{width:78px!important;text-align:right}
+.vin:disabled,.sl:disabled{opacity:.4;cursor:not-allowed}
+.sw{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--tx2);padding:4px 0 8px;cursor:pointer}
+details.sub{margin-top:10px;border-top:1px solid var(--line)}
+details.sub>summary{cursor:pointer;padding:10px 0 4px;font-size:12px;font-weight:600;color:var(--mut);list-style:none}
+details.sub>summary::-webkit-details-marker{display:none}
+details.sub>summary::before{content:"+ ";font-family:ui-monospace,monospace}
+details.sub[open]>summary::before{content:"\\2212 "}
+@media(max-width:560px){.jrow.hd{display:none}.jrow{grid-template-columns:minmax(0,1fr) 112px}.jrow .sl{grid-column:1/-1;order:3}.jrow button{display:none}}
+#camline{font-size:12px;margin-top:8px;font-variant-numeric:tabular-nums}
+.camhead{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;margin-bottom:8px;font-size:13px}
+#wc_bar{height:100%;width:0;background:var(--ok);transition:width .15s}
+#wc_res td{padding:3px 10px 3px 0}
 </style></head><body>
-<div id="bar">
+<header id="top">
  <div class="line">
-  <h1>Robot Arm <small id="mode"></small></h1>
-  <div class="grp"><button class="warn" id="start">Snap to home (startup)</button>
-   <button id="home">Home</button><button class="gray" id="reset">Sliders = current</button></div>
-  <div class="grp"><button class="warn" id="sethome">Set current pose as home</button></div>
-  <div class="grp"><label><input type="checkbox" id="live" checked> live drag</label>
-   <label>soften <input type="number" id="soften" min="0" value="" placeholder="yaml"> ms/deg</label>
-   <button class="gray" id="setsoft">set</button></div>
-  <div class="grp"><label><input type="checkbox" id="flooron" checked> Z floor guard</label>
-   <label>floor <input type="number" id="floormm" step="1" value="5" style="width:60px"> mm</label>
-   <span id="tcpz" class="muted">TCP z -</span></div>
+  <h1>Robot Arm <span id="mode"></span></h1>
+  <nav id="tabs" role="tablist"><button id="tabbtn_arm" role="tab" aria-selected="true">Arm</button><button id="tabbtn_cam" role="tab" aria-selected="false">Webcam</button></nav>
  </div>
- <div id="msg"></div>
-</div>
+ <div id="tools">
+  <div class="grp"><span class="gl">Pose</span><button class="warn" id="start" title="Drive every joint to the saved home pose">Snap to home (startup)</button>
+   <button id="home">Go home</button><button class="gray" id="reset" title="Reset sliders to the commanded pose">Sync sliders</button>
+   <button class="gray" id="sethome" title="Save the current pose to configs/home.txt">Save pose as home</button></div>
+  <div class="grp"><span class="gl">Motion</span><label><input type="checkbox" id="live" checked> Live drag</label>
+   <label>Soften <input type="number" id="soften" min="0" value="" placeholder="yaml"> ms/deg</label>
+   <button class="gray" id="setsoft">Set</button></div>
+  <div class="grp"><span class="gl">Safety</span><label><input type="checkbox" id="flooron" checked> Z floor guard</label>
+   <label>Floor <input type="number" id="floormm" step="1" value="5" style="width:60px"> mm</label>
+   <span id="tcpz" class="muted">TCP z -</span>
+   <label><input type="checkbox" id="levelon"> Keep gripper level</label>
+   <label>J4 roll <input type="number" id="levelroll" step="1" min="0" max="180" value="28" style="width:60px">&deg;</label></div>
+ </div>
+ <div id="msg" role="alert"></div>
+</header>
+<div id="tab_arm">
 <div id="grid">
  <div class="col">
-  <details class="card" open><summary>Joints <small>commanded angles, not measured (no position feedback)</small></summary>
-   <div class="body"><div id="joints"></div><div class="muted" style="font-size:12px;margin-top:8px" id="homeinfo"></div></div></details>
- </div>
- <div class="col">
-  <details class="card" open><summary>3D model</summary><div class="body">
-   <canvas id="cv"></canvas>
-   <div class="legend muted"><i style="background:#4da3ff"></i>commanded <i style="background:#ffc850"></i>slider target <i style="background:#50e678"></i>IK solution
-    &nbsp;&middot; drag to rotate, wheel to zoom</div>
-   <div class="legend muted">q = sign &times; (servo&deg; &minus; zero) from arm_ik_v2.py. Gripper: 167.5&deg; closed, 10&deg; open (3.5 cm).</div>
-  </div></details>
+  <details class="card" open><summary>Controls <small>commanded angles, not measured (no position feedback)</small></summary>
+   <div class="body"><div id="joints"></div><div class="muted" style="font-size:12px;margin-top:10px" id="homeinfo"></div></div></details>
   <details class="card" id="ik" open><summary>Inverse kinematics <small id="ikstat"></small></summary><div class="body">
    <div class="form"><select id="ikmode"><option value="abs">absolute TCP (x, y, z mm, base_link)</option><option value="rel">relative to current TCP (dx, dy, dz mm)</option><option value="cyl_rel">relative cylindrical (dr mm, d&theta; deg, dz mm)</option><option value="cyl_abs">absolute cylindrical (r mm, &theta; deg, z mm)</option></select>
     <span id="lx">x</span> <input type="number" step="1" id="ikx" value="0"> <span id="ly">y</span> <input type="number" step="1" id="iky" value="0"> <span id="lz">z</span> <input type="number" step="1" id="ikz" value="0">
     <label><input type="checkbox" id="ikhold"> hold tool direction</label></div>
-   <div class="muted" style="font-size:12px;margin:2px 0 6px" id="tcpnow">TCP now: -</div>
+   <div class="muted" style="font-size:12px;margin:2px 0 8px" id="tcpnow">TCP now: -</div>
    <button class="gray" id="ikfill">Fill from current TCP</button>
-   <button id="iksolve">Solve (preview only)</button>
+   <button id="iksolve">Preview solution</button>
    <button class="warn" id="ikgo" disabled>Move arm to solution</button>
    <pre id="ikout">TCP = estimated closed-fingertip midpoint. Solving never moves the arm.</pre>
   </div></details>
  </div>
+ <div class="col view">
+  <div class="card"><div class="body" style="padding-top:12px">
+   <div class="seg" role="group" aria-label="Right panel"><button id="vbtn_model" aria-pressed="true">3D model</button><button id="vbtn_cam" aria-pressed="false">ESP32 camera</button></div>
+   <div id="view_model">
+    <canvas id="cv"></canvas>
+    <div class="legend muted"><i style="background:#4da3ff"></i>commanded <i style="background:#ffc850"></i>slider target <i style="background:#50e678"></i>IK solution
+     &nbsp;&middot; drag to rotate, wheel to zoom</div>
+    <div class="legend muted">q = sign &times; (servo&deg; &minus; zero) from arm_ik_v2.py. Gripper: 167.5&deg; closed, 10&deg; open (3.5 cm).</div>
+   </div>
+   <div id="view_cam" style="display:none"><div id="cams"></div><div id="camline" class="muted"></div></div>
+  </div></div>
+ </div>
 </div>
-<details class="card" id="camrow" open style="margin-top:14px"><summary>Cameras <small>ESP32-CAM vs Pi camera, same QR detector</small></summary><div class="body">
- <div id="cams" style="display:flex;gap:12px;flex-wrap:wrap"></div>
- <table id="camcmp" style="width:100%;font-size:12px;margin-top:10px"></table>
-</div></details>
+</div>
+<div id="tab_cam" style="display:none">
+ <details class="card" open><summary>Webcam <small id="wc_stat"></small></summary><div class="body">
+  <div style="display:flex;gap:12px;flex-wrap:wrap">
+   <div style="flex:1 1 360px">
+    <img id="wc_img" style="width:100%;max-height:480px;object-fit:contain;background:#000;border-radius:6px">
+    <div style="height:10px;background:#2b313c;border-radius:5px;overflow:hidden;margin-top:6px"><div id="wc_bar"></div></div>
+    <div class="muted" style="font-size:12px;margin:4px 0 8px">Focus <b id="wc_focus">-</b> (peak <b id="wc_peak">-</b>). Turn the focus ring until the bar stops rising.</div>
+    <button id="wc_cap">Capture and detect</button>
+    <button class="gray" id="wc_rot">Rotate 90</button>
+    <button class="gray" id="wc_reset">Reset focus peak</button>
+    <label><input type="checkbox" id="wc_live"> live dish outline</label>
+   </div>
+   <div style="flex:1 1 360px">
+    <img id="wc_resimg" style="width:100%;max-height:480px;object-fit:contain;background:#000;border-radius:6px;display:none">
+    <div id="wc_resinfo" class="muted" style="font-size:13px;margin-top:6px">No capture yet. Blue = dish, red = disk, purple = zone.</div>
+    <table id="wc_res" style="font-size:13px"></table>
+    <a id="wc_dl" href="/webcam_result.jpg" download="petri_result.jpg" style="display:none;color:var(--acc)">download annotated image</a>
+   </div>
+  </div>
+ </div></details>
+</div>
 <script>
 const ZERO=__ZERO__,SIGN=__SIGN__;
 const SIMULATION_ONLY=__SIMULATION_ONLY__;
@@ -147,25 +230,70 @@ const msg=t=>{$('msg').textContent=t||''};
 async function api(path,body){
   const r=await fetch(path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
   const j=await r.json(); if(j.error)msg(j.error); else if(body)msg(''); return j;}
-function build(s){
-  const box=$('joints'); box.innerHTML=''; sliders=[];
-  s.joints.forEach(j=>{
-    const d=document.createElement('div'); d.className='joint';
-    const role=['base','shoulder','elbow','wrist pitch','wrist roll','gripper'][j.index];
-    d.innerHTML=`<div class="jh"><span><b>J${j.index}</b> <span class="muted">${role} &middot; ch ${j.channel} &middot; home ${j.home_deg.toFixed(1)}&deg;</span></span>
-    <span>target <span class="val" id="t${j.index}">${j.commanded_deg.toFixed(1)}</span>&deg; &nbsp;now <span class="val" id="c${j.index}">${j.commanded_deg.toFixed(1)}</span>&deg; &nbsp;${j.index===5?'<span class="val" id="q5">0</span> mm':'q <span class="val" id="q'+j.index+'">0</span>&deg;'}</span></div>
-    <div class="jctl"><button class="mini" data-n="${j.index}" data-d="-1">&minus;1</button>
-    <input type="range" min="${j.min_deg}" max="${j.max_deg}" step="0.5" value="${j.commanded_deg}" id="s${j.index}">
-    <button class="mini" data-n="${j.index}" data-d="1">+1</button><button class="mini" data-h="${j.index}">home</button></div>`;
-    box.appendChild(d);
-    const sl=d.querySelector('input'); sliders[j.index]=sl;
-    sl.addEventListener('input',()=>{$('t'+j.index).textContent=(+sl.value).toFixed(1); if($('live').checked)queue(j.index,+sl.value)});
-    sl.addEventListener('change',()=>queue(j.index,+sl.value,true));
+const CYL=[['r','r','mm',1],['h','height z','mm',1],['t','theta','deg',0.5],['p','tool pitch','deg',0.5]];
+let cylLast=0,cylTimer=null;
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+function rowHtml(o){return `<div class="jrow"><div class="jl"><span><b>${o.name}</b> <span class="muted">${o.sub}</span></span><span class="jn muted">now <span class="val" id="${o.nid}">0</span> ${o.unit}${o.q||''}</span></div>
+  <input type="range" class="sl" id="${o.sid}" min="${o.min}" max="${o.max}" step="${o.step}" value="${o.val}" aria-label="${o.name} slider">
+  <label class="vc"><input type="number" class="vin" id="${o.vid}" min="${o.min}" max="${o.max}" step="${o.step}" value="${(+o.val).toFixed(1)}" aria-label="${o.name} value"><span class="unit">${o.unit}</span></label>
+  ${o.home!==undefined?`<button class="mini" data-h="${o.home}" title="Go to this joint's home angle">home</button>`:'<span></span>'}</div>`}
+const HEAD='<div class="jrow hd"><span></span><span>Slider</span><span>Value</span><span></span></div>';
+function buildCyl(s){
+  const box=$('cyl'); box.innerHTML='';
+  const ws=s.workspace; if(!ws||!s.cyl){box.innerHTML='<div class="muted" style="padding:6px 0">Tool-position sliders need IK (numpy + scipy). Use the raw joint sliders below.</div>';return}
+  const rng={r:ws.r,h:ws.h,t:ws.theta,p:ws.pitch};
+  box.innerHTML=HEAD+CYL.map(([k,name,unit,step])=>rowHtml({name,sub:'',nid:'cn_'+k,sid:'cs_'+k,vid:'cv_'+k,unit,step,min:Math.floor(rng[k][0]),max:Math.ceil(rng[k][1]),val:0})).join('');
+  CYL.forEach(([k])=>{
+    const sl=$('cs_'+k),vin=$('cv_'+k);
+    sl.addEventListener('input',()=>{vin.value=(+sl.value).toFixed(1);cylLast=Date.now();if($('live').checked)sendCyl(false)});
+    sl.addEventListener('change',()=>{cylLast=Date.now();sendCyl(true)});
+    vin.addEventListener('change',()=>{const v=clamp(+vin.value||0,+sl.min,+sl.max);sl.value=v;vin.value=v.toFixed(1);cylLast=Date.now();sendCyl(true)});
   });
-  box.querySelectorAll('[data-h]').forEach(b=>b.onclick=()=>{const i=+b.dataset.h;const v=state.joints[i].home_deg;setSlider(i,v);queue(i,v,true)});
-  box.querySelectorAll('[data-n]').forEach(b=>b.onclick=()=>{const i=+b.dataset.n;const v=Math.min(state.joints[i].max_deg,Math.max(state.joints[i].min_deg,+sliders[i].value+ +b.dataset.d));setSlider(i,v);queue(i,v,true)});
+  syncCyl(true);
 }
-function setSlider(i,v){sliders[i].value=v;$('t'+i).textContent=(+v).toFixed(1)}
+function syncCyl(force){
+  if(!state||!state.cyl||!$('cs_r'))return;
+  const v={r:state.cyl[0],t:state.cyl[1],h:state.cyl[2],p:state.tool_pitch_deg};
+  CYL.forEach(([k])=>{$('cn_'+k).textContent=v[k].toFixed(1);
+    if((force||Date.now()-cylLast>1500)&&document.activeElement!==$('cv_'+k)){$('cs_'+k).value=v[k];$('cv_'+k).value=v[k].toFixed(1)}});
+  const lv=!!state.level_enabled;
+  $('cs_p').disabled=lv;$('cv_p').disabled=lv;
+  if(state.joints.length>3&&sliders[3]){sliders[3].disabled=lv;$('t3').disabled=lv}
+}
+function sendCyl(now){
+  clearTimeout(cylTimer);
+  const go=async()=>{cylTimer=null;
+    const r=await api('/api/cyl/move',{r:+$('cs_r').value,h:+$('cs_h').value,theta:+$('cs_t').value,pitch:+$('cs_p').value});
+    if(r.error){cylLast=0;syncCyl(true)}};
+  if(now)go(); else cylTimer=setTimeout(go,80);
+}
+const ROLES=['base','shoulder','elbow','wrist pitch','wrist roll','gripper'];
+function build(s){
+  const box=$('joints');
+  box.innerHTML='<div class="sec">Tool position</div><div id="cyl"></div><div class="sec">Wrist and gripper</div><div id="wg"></div><details class="sub" id="rawd"><summary>Raw joints J0-J3</summary><div id="rawj"></div></details>';
+  sliders=[];
+  buildCyl(s);
+  $('wg').innerHTML=HEAD;$('rawj').innerHTML=HEAD;
+  s.joints.forEach(j=>{
+    const i=j.index,grip=i===5;
+    const tmp=document.createElement('div');
+    tmp.innerHTML=rowHtml({name:'J'+i,sub:ROLES[i],nid:'c'+i,sid:'s'+i,vid:'t'+i,unit:grip?'deg':'deg',step:0.5,min:j.min_deg,max:j.max_deg,val:j.commanded_deg,home:i,
+      q:grip?' &middot; <span class="val" id="q5">0</span> mm':' &middot; q <span class="val" id="q'+i+'">0</span>&deg;'});
+    const row=tmp.firstElementChild;row.title=`channel ${j.channel}, home ${j.home_deg.toFixed(1)} deg`;
+    (i<4?$('rawj'):$('wg')).appendChild(row);
+    const sl=$('s'+i),vin=$('t'+i); sliders[i]=sl;
+    sl.addEventListener('input',()=>{vin.value=(+sl.value).toFixed(1); if($('live').checked)queue(i,+sl.value)});
+    sl.addEventListener('change',()=>queue(i,+sl.value,true));
+    vin.addEventListener('change',()=>{const v=clamp(+vin.value||0,j.min_deg,j.max_deg);setSlider(i,v);queue(i,v,true)});
+    row.querySelector('[data-h]').onclick=()=>{const v=state.joints[i].home_deg;setSlider(i,v);queue(i,v,true)};
+  });
+  const sw=document.createElement('label');sw.className='sw';
+  sw.title='On: the gripper eases to its target with the other joints. Off: it jumps straight to the target while the arm still interpolates.';
+  sw.innerHTML='<input type="checkbox" id="gripint" checked> Interpolate gripper motion';
+  $('wg').appendChild(sw);
+  $('gripint').onchange=()=>api('/api/gripper_interp',{enabled:$('gripint').checked});
+}
+function setSlider(i,v){sliders[i].value=v;$('t'+i).value=(+v).toFixed(1)}
 function queue(i,v,now){
   pending[i]=v; if(now){flush();return}
   if(!timer)timer=setTimeout(flush,80);
@@ -187,9 +315,13 @@ async function refresh(){
     if(document.activeElement!==$('soften')&&s.soften_ms!==null)$('soften').value=s.soften_ms;
     if(document.activeElement!==$('floormm'))$('floormm').value=s.floor_mm;
     $('flooron').checked=s.floor_enabled;
+    $('levelon').checked=!!s.level_enabled;
+    if($('gripint')&&document.activeElement!==$('gripint'))$('gripint').checked=s.grip_interp!==false;
+    if(document.activeElement!==$('levelroll'))$('levelroll').value=s.level_roll_deg;
+    syncCyl(false);
     const tz=$('tcpz');
-    if(!s.guard_available){tz.textContent='z guard unavailable (no IK/numpy)';tz.style.color='#ff6b6b'}
-    else if(s.tcp_z_mm!==null){tz.textContent='TCP z '+s.tcp_z_mm.toFixed(1)+' mm';tz.style.color=s.tcp_z_mm<s.floor_mm?'#ff6b6b':''}
+    if(!s.guard_available){tz.textContent='z guard unavailable (no IK/numpy)';tz.style.color='var(--bad)'}
+    else if(s.tcp_z_mm!==null){tz.textContent='TCP z '+s.tcp_z_mm.toFixed(1)+' mm';tz.style.color=s.tcp_z_mm<s.floor_mm?'var(--bad)':''}
   }catch(e){msg('connection lost')}
 }
 let homeVersion=-1;
@@ -197,10 +329,12 @@ $('start').onclick=async()=>{
   if(!confirm(`__WARNING__`))return;
   const r=await api('/api/startup',{confirmed:true});
   if(!r.error){state=null;refresh();}};
-$('home').onclick=async()=>{const r=await api('/api/home',{});if(!r.error)state.joints.forEach(j=>setSlider(j.index,j.home_deg))};
+$('home').onclick=async()=>{const r=await api('/api/home',{});if(!r.error){cylLast=0;state.joints.forEach(j=>setSlider(j.index,j.home_deg))}};
+$('levelon').onchange=async()=>{const r=await api('/api/level',{enabled:$('levelon').checked,roll_deg:+$('levelroll').value});if(r.error)$('levelon').checked=false;cylLast=0};
+$('levelroll').onchange=()=>{if($('levelon').checked)api('/api/level',{enabled:true,roll_deg:+$('levelroll').value})};
 $('flooron').onchange=()=>api('/api/floor',{enabled:$('flooron').checked});
 $('floormm').onchange=()=>api('/api/floor',{floor_mm:+$('floormm').value});
-$('reset').onclick=()=>state.joints.forEach(j=>setSlider(j.index,j.commanded_deg));
+$('reset').onclick=()=>{cylLast=0;syncCyl(true);state.joints.forEach(j=>setSlider(j.index,j.commanded_deg))};
 $('sethome').onclick=async()=>{
   if(!confirm('Save the current commanded pose as the new home? It is written to configs/home.txt and used on every start.'))return;
   const r=await api('/api/sethome',{});
@@ -239,7 +373,7 @@ function proj(p,sc,w,h,ctr){
   const y2=y1*cp-z*sp,z2=y1*sp+z*cp;
   return[w/2+x1*sc,h/2-z2*sc,y2];}
 function draw(){
-  if(!model||!state||!sliders.length)return;
+  if(!model||!state||!sliders.length||tabNow!=='arm'||viewNow!=='model')return;
   const dpr=window.devicePixelRatio||1,w=cv.clientWidth,h=cv.clientHeight;
   if(cv.width!==w*dpr){cv.width=w*dpr;cv.height=h*dpr}
   cx.setTransform(dpr,0,0,dpr,0,0);cx.clearRect(0,0,w,h);
@@ -304,28 +438,23 @@ $('ikgo').onclick=async()=>{
   const r=await api('/api/move',{angles:a});
   if(!r.error){for(let i=0;i<5;i++)setSlider(i,ikPrev[i]);ikPrev=null;$('ikgo').disabled=true}};
 api('/api/model').then(m=>{model=m;$('ikstat').textContent=m.ik_ok?'(arm_ik_v2.py loaded)':'(IK unavailable: '+m.ik_error+')';$('iksolve').disabled=!m.ik_ok});
-$('mode').textContent=SIMULATION_ONLY?'— SIMULATION ONLY (motors disabled)':'';
+$('mode').textContent=SIMULATION_ONLY?'SIMULATION ONLY · motors disabled':'';
 if(SIMULATION_ONLY){$('start').style.display='none';$('start').disabled=true}
 refresh();setInterval(refresh,300);
-const CAMS=[['esp','ESP32-CAM (USB)'],['pi','Pi camera (CSI)']];
+const CAMS=[['esp','ESP32-CAM']];
 const OPTS=[['detect','Detect QR'],['focus','Focus meter'],['denoise','Denoise'],['sharpen','Sharpen'],['clahe','Contrast (CLAHE)'],['show_filtered','Show filtered image'],['wechat','WeChat detector'],['robust','Robust decode']];
 function optsHtml(k){
-  const boxes=OPTS.map(([o,t])=>`<label style="display:inline-block;margin:2px 10px 2px 0;font-size:12px"><input type="checkbox" data-cam="${k}" data-opt="${o}"> ${t}</label>`).join('');
-  const pi=k==='pi'?`<div class="form" style="margin-top:6px;font-size:12px">capture:
-    <select id="pi_size"></select> sharp <input type="number" id="pi_sharp" step="0.5" min="0" max="16" style="width:60px">
-    contrast <input type="number" id="pi_contrast" step="0.1" min="0" max="16" style="width:60px">
-    denoise <select id="pi_denoise"></select> zoom <input type="number" id="pi_zoom" step="0.5" min="1" max="4" style="width:60px">
-    <button class="mini" id="pi_apply">Apply (restarts camera)</button></div>`:'';
-  const rot=`<div style="margin:4px 0;font-size:12px">rotate (clockwise): <select data-rot="${k}"><option>0</option><option>90</option><option>180</option><option>270</option></select>
+  const boxes=OPTS.map(([o,t])=>`<label style="display:inline-flex;align-items:center;gap:5px;margin:3px 14px 3px 0;font-size:13px;color:var(--tx2)"><input type="checkbox" data-cam="${k}" data-opt="${o}"> ${t}</label>`).join('');
+  const rot=`<div style="margin:2px 0 6px;font-size:13px">Rotate (clockwise) <select data-rot="${k}"><option>0</option><option>90</option><option>180</option><option>270</option></select>
     <button class="mini" data-rotstep="${k}">+90&deg;</button></div>`;
-  return `<details class="card" style="margin-top:8px"><summary>Image options <small>every feature is a toggle</small></summary><div class="body">${rot}${boxes}<div id="params_${k}" style="margin-top:8px"></div>${pi}</div></details>`;
+  return `<details class="sub"><summary>Image options</summary><div style="padding-top:6px">${rot}${boxes}<div id="params_${k}" style="margin-top:8px"></div></div></details>`;
 }
 function buildParams(k,c){
   const box=$('params_'+k);if(!box||!c.options||!c.options.param_spec)return;
-  let html='<div class="muted" style="font-size:12px;margin-bottom:4px">Tune filter values <button class="mini" data-preset="'+k+'">reset to defaults</button></div>',grp='';
+  let html='<div class="muted" style="font-size:12px;margin-bottom:4px">Filter values <button class="mini" data-preset="'+k+'">reset to defaults</button></div>',grp='';
   c.options.param_spec.forEach(s=>{
-    if(s.group!==grp){grp=s.group;html+=`<div style="font-size:12px;margin-top:6px;color:#9ab"><b>${grp}</b></div>`}
-    html+=`<div style="display:flex;align-items:center;gap:8px;font-size:12px"><span style="width:170px">${s.label}</span>
+    if(s.group!==grp){grp=s.group;html+=`<div class="sec">${s.group}</div>`}
+    html+=`<div style="display:flex;align-items:center;gap:8px;font-size:12px"><span style="width:150px">${s.label}</span>
       <input type="range" style="flex:1;height:20px" data-param="${s.key}" data-pcam="${k}" min="${s.min}" max="${s.max}" step="${s.step}" value="${c.options.params[s.key]}">
       <span class="val" style="width:44px;text-align:right" id="pv_${k}_${s.key}">${c.options.params[s.key]}</span></div>`;
   });
@@ -343,13 +472,6 @@ function wireOpts(k,c){
   rs.onchange=()=>api('/api/camera/rotate',{cam:k,deg:+rs.value});
   document.querySelector(`[data-rotstep="${k}"]`).onclick=()=>api('/api/camera/rotate',{cam:k,deg:(+rs.value+90)%360});
   document.querySelectorAll(`[data-cam="${k}"]`).forEach(e=>e.onchange=()=>api('/api/camera/options',{cam:k,key:e.dataset.opt,value:e.checked}));
-  if(k==='pi'&&c.pi){
-    $('pi_size').innerHTML=c.pi.sizes.map(v=>`<option>${v}</option>`).join('');
-    $('pi_denoise').innerHTML=c.pi.denoise_modes.map(v=>`<option>${v}</option>`).join('');
-    $('pi_size').value=c.pi.size;$('pi_sharp').value=c.pi.sharpness;$('pi_contrast').value=c.pi.contrast;
-    $('pi_denoise').value=c.pi.denoise;$('pi_zoom').value=c.pi.zoom;
-    $('pi_apply').onclick=()=>api('/api/camera/pi',{size:$('pi_size').value,sharpness:+$('pi_sharp').value,contrast:+$('pi_contrast').value,denoise:$('pi_denoise').value,zoom:+$('pi_zoom').value});
-  }
 }
 function syncOpts(k,c){
   if(!c.options)return;
@@ -362,9 +484,11 @@ function syncOpts(k,c){
     if(e.dataset.opt==='wechat'&&!c.options.wechat_available){e.disabled=true;e.title='needs opencv-contrib'}
   });
 }
-async function pullCam(k){ // ask for a frame newer than the last one shown; never queues
+const camVisible=()=>tabNow==='arm'&&viewNow==='cam';
+async function pullCam(k){ // ask for a frame newer than the last one shown; never queues; idles while hidden
   let seq=-1,url=null;
   for(;;){
+    if(!camVisible()){await new Promise(z=>setTimeout(z,400));continue}
     try{
       const r=await fetch('/camera.jpg?src='+k+'&seq='+seq+'&t='+Date.now(),{cache:'no-store'});
       if(r.status===200){
@@ -379,43 +503,84 @@ async function pullCam(k){ // ask for a frame newer than the last one shown; nev
 }
 function camTick(){
   const cs=state&&state.cameras,box=$('cams');
-  if(!cs||!Object.keys(cs).length){box.textContent='cameras disabled';return}
-  CAMS.forEach(([k,title])=>{
-    const c=cs[k];if(!c)return;
-    let d=$('cam_'+k);
-    if(!d){d=document.createElement('div');d.id='cam_'+k;d.style.flex='1 1 220px';
-      d.innerHTML=`<b>${title}</b> <small id="cs_${k}"></small>${k==='esp'?' <button class="mini" id="light">Light: off</button> <input type="range" id="lbr" min="0" max="100" step="1" value="20" style="width:110px;vertical-align:middle" title="light brightness"> <span id="lbrv" class="muted">20%</span>':''}<br><img id="img_${k}" style="width:100%;max-height:420px;object-fit:contain;background:#000;border-radius:6px"><div id="ql_${k}" style="font-size:13px;margin-top:4px"></div>${optsHtml(k)}`;
-      box.appendChild(d);pullCam(k);wireOpts(k,c);
-      if(k==='esp'){$('light').onclick=()=>api('/api/camera/light',{on:!(state.cameras.esp&&state.cameras.esp.light)});
-        let lt=null,ld=false;const lb=$('lbr');
-        lb.oninput=()=>{ld=true;$('lbrv').textContent=lb.value+'%';if(!lt)lt=setTimeout(()=>{lt=null;api('/api/camera/light',{brightness:+lb.value})},80)};
-        lb.onchange=async()=>{clearTimeout(lt);lt=null;await api('/api/camera/light',{brightness:+lb.value});ld=false};
-        lb.onpointerdown=()=>{ld=true};lb.onpointerup=()=>{ld=false};window.lbDrag=()=>ld}}
-    syncOpts(k,c);
-    if(k==='esp'&&$('light')){const on=!!c.light;$('light').textContent='Light: '+(on?'ON':'off');$('light').style.background=on?'#d9a62b':'';
-      if(c.brightness!=null&&!(window.lbDrag&&window.lbDrag())){$('lbr').value=c.brightness;$('lbrv').textContent=Math.round(c.brightness)+'%'}}
-    $('cs_'+k).textContent=c.connected?`(${c.port||'auto'}, ${c.fps.toFixed(1)} fps)`+(c.bytes===0?' - nothing received':(c.fps===0?' - no valid frames':'')):'(not connected: '+(c.error||'waiting')+')';
-  });
-  let h='<tr style="color:#999"><td>camera</td><td>size</td><td>fps</td><td>jpeg KB</td><td>proc ms</td><td>detect ms</td><td>focus (peak)</td><td>QR found %</td><td>QR decoded %</td></tr>';
-  CAMS.forEach(([k,title])=>{const c=cs[k];if(!c||!c.stats)return;const t=c.stats;
-    h+=`<tr><td>${title}</td><td>${t.width}x${t.height}</td><td>${c.fps.toFixed(1)}</td><td>${t.jpeg_kb}</td><td>${t.proc_ms}</td><td>${t.detect_ms}</td><td>${c.options&&c.options.focus?t.focus+' ('+t.focus_peak+')':'-'}</td><td>${t.seen_pct}</td><td>${t.decoded_pct}</td></tr>`});
-  $('camcmp').innerHTML=h;
+  if(!cs||!cs.esp){box.innerHTML='<div class="muted" style="padding:8px 0">ESP32 camera disabled (started with --no-camera).</div>';return}
+  const k='esp',c=cs.esp;
+  let d=$('cam_esp');
+  if(!d){d=document.createElement('div');d.id='cam_esp';
+    d.innerHTML=`<div class="camhead"><small id="cs_esp"></small><span style="flex:1"></span><button class="mini" id="light">Light: off</button>
+      <input type="range" id="lbr" min="0" max="100" step="1" value="20" style="width:110px" aria-label="Light brightness"><span id="lbrv" class="muted" style="width:32px">20%</span></div>
+      <img id="img_esp" alt="ESP32-CAM live view" style="width:100%;max-height:440px;object-fit:contain;background:#000;border-radius:6px;display:block"><div id="ql_esp" style="font-size:13px;margin-top:6px"></div>${optsHtml(k)}`;
+    box.innerHTML='';box.appendChild(d);pullCam(k);wireOpts(k,c);
+    $('light').onclick=()=>api('/api/camera/light',{on:!(state.cameras.esp&&state.cameras.esp.light)});
+    let lt=null,ld=false;const lb=$('lbr');
+    lb.oninput=()=>{ld=true;$('lbrv').textContent=lb.value+'%';if(!lt)lt=setTimeout(()=>{lt=null;api('/api/camera/light',{brightness:+lb.value})},80)};
+    lb.onchange=async()=>{clearTimeout(lt);lt=null;await api('/api/camera/light',{brightness:+lb.value});ld=false};
+    lb.onpointerdown=()=>{ld=true};lb.onpointerup=()=>{ld=false};window.lbDrag=()=>ld}
+  if(!camVisible())return;
+  syncOpts(k,c);
+  const on=!!c.light;$('light').textContent='Light: '+(on?'on':'off');$('light').style.background=on?'#c4951f':'';
+  if(c.brightness!=null&&!(window.lbDrag&&window.lbDrag())){$('lbr').value=c.brightness;$('lbrv').textContent=Math.round(c.brightness)+'%'}
+  $('cs_esp').textContent=c.connected?`${c.port||'auto'}, ${c.fps.toFixed(1)} fps`+(c.bytes===0?' - nothing received':(c.fps===0?' - no valid frames':'')):'Not connected: '+(c.error||'waiting');
+  const t=c.stats;
+  $('camline').textContent=t?`${t.width}x${t.height} · jpeg ${t.jpeg_kb} KB · process ${t.proc_ms} ms · detect ${t.detect_ms} ms`+(c.options&&c.options.focus?` · focus ${t.focus} (peak ${t.focus_peak})`:'')+` · QR seen ${t.seen_pct}%, decoded ${t.decoded_pct}%`:'';
 }
 function qrTick(){
-  const cs=state&&state.cameras;if(!cs)return;
+  const cs=state&&state.cameras;if(!cs||!camVisible())return;
   CAMS.forEach(([k])=>{
     const q=cs[k]&&cs[k].qr,box=$('ql_'+k);if(!box)return;
     box.innerHTML='';
     if(!q){return}
     if(!q.length){box.innerHTML='<small>no QR code in view</small>';return}
     q.forEach(c=>{
-      const d=document.createElement('div');d.style.color=c.ok?'#6e6':'#f77';
-      if(c.ok&&/^https?:\\/\\//i.test(c.text)){const a=document.createElement('a');a.href=c.text;a.target='_blank';a.rel='noopener';a.textContent=c.text;a.style.color='#8cf';d.appendChild(a)}
+      const d=document.createElement('div');d.style.color=c.ok?'var(--ok)':'var(--bad)';
+      if(c.ok&&/^https?:\\/\\//i.test(c.text)){const a=document.createElement('a');a.href=c.text;a.target='_blank';a.rel='noopener';a.textContent=c.text;a.style.color='var(--acc)';d.appendChild(a)}
       else d.appendChild(document.createTextNode(c.text));
       box.appendChild(d)});
   });
 }
 setInterval(camTick,1000);setInterval(qrTick,500);
+/* ---- tabs and webcam ---- */
+let tabNow='arm',viewNow='model',wcRun=false,wcSeq=-1;
+function showTab(t){tabNow=t;
+  $('tab_arm').style.display=t==='arm'?'':'none';$('tab_cam').style.display=t==='cam'?'':'none';$('tools').style.display=t==='arm'?'':'none';
+  $('tabbtn_arm').setAttribute('aria-selected',t==='arm');$('tabbtn_cam').setAttribute('aria-selected',t==='cam');
+  sizeBar();
+  if(t==='cam'&&!wcRun){wcRun=true;wcPull()}}
+$('tabbtn_arm').onclick=()=>showTab('arm');$('tabbtn_cam').onclick=()=>showTab('cam');
+function showView(v){viewNow=v;
+  $('view_model').style.display=v==='model'?'':'none';$('view_cam').style.display=v==='cam'?'':'none';
+  $('vbtn_model').setAttribute('aria-pressed',v==='model');$('vbtn_cam').setAttribute('aria-pressed',v==='cam')}
+$('vbtn_model').onclick=()=>showView('model');$('vbtn_cam').onclick=()=>showView('cam');
+function sizeBar(){document.documentElement.style.setProperty('--barh',$('top').offsetHeight+'px')}
+new ResizeObserver(sizeBar).observe($('top'));
+async function wcPull(){ // only while the Webcam tab is open
+  let url=null;
+  while(tabNow==='cam'){
+    try{
+      const r=await fetch('/webcam.jpg?seq='+wcSeq+'&t='+Date.now(),{cache:'no-store'});
+      if(r.status===200){wcSeq=+r.headers.get('X-Seq');const u=URL.createObjectURL(await r.blob());$('wc_img').src=u;if(url)URL.revokeObjectURL(url);url=u}
+      else await new Promise(z=>setTimeout(z,r.status===404?2000:150));
+    }catch(e){await new Promise(z=>setTimeout(z,1000))}
+  }
+  wcRun=false;
+}
+function wcTick(){
+  const w=state&&state.webcam;if(tabNow!=='cam'||!w)return;
+  $('wc_stat').textContent=w.connected?`(${w.port}, ${w.size[0]}x${w.size[1]}, ${w.fps.toFixed(1)} fps)`:'(not connected: '+(w.error||'waiting')+')';
+  $('wc_focus').textContent=w.focus.toFixed(1);$('wc_peak').textContent=w.focus_peak.toFixed(1);
+  $('wc_bar').style.width=(w.focus_peak>0?Math.min(100,100*w.focus/w.focus_peak):0)+'%';
+  if(document.activeElement!==$('wc_live'))$('wc_live').checked=w.live_dish;
+  const r=w.result;
+  if(r&&r.time!==wcTick.last){wcTick.last=r.time;
+    $('wc_resimg').src='/webcam_result.jpg?t='+Date.now();$('wc_resimg').style.display='';$('wc_dl').style.display='';
+    $('wc_resinfo').textContent=`${r.time}: dish R=${r.dish_r_mm.toFixed(1)} mm (${r.mm_per_px.toFixed(4)} mm/px), ${r.disks.length} disk(s), focus ${r.focus.toFixed(0)}`;
+    $('wc_res').innerHTML='<tr class="muted"><td>disk</td><td>R mm</td><td>zone R mm</td></tr>'+r.disks.map((d,i)=>`<tr><td>#${i+1} (${d.x.toFixed(0)},${d.y.toFixed(0)})</td><td>${d.r_mm.toFixed(1)}</td><td>${d.zone_mm==null?'none':d.zone_mm.toFixed(1)+(d.clipped?' (lower bound)':'')}</td></tr>`).join('')}
+}
+setInterval(wcTick,500);
+$('wc_cap').onclick=async()=>{const r=await api('/api/webcam/capture',{});if(r.error)$('wc_resinfo').textContent=r.error};
+$('wc_rot').onclick=()=>api('/api/webcam/options',{rotate_step:90});
+$('wc_reset').onclick=()=>api('/api/webcam/options',{reset_peak:true});
+$('wc_live').onchange=()=>api('/api/webcam/options',{live_dish:$('wc_live').checked});
 </script></body></html>
 """
 
@@ -482,6 +647,91 @@ class IKBridge:
         mod = self.mod
         T, _ = mod.fk(mod.to_q(np.array(servo_deg[:5])), np.array(mod.TCP_ESTIMATE))
         return [float(v) for v in T[:3, 3]]
+
+    def axis_xy(self) -> list[float]:
+        return [float(v) for v in self.mod.JOINT_ORIGINS[0][:2]]
+
+    def tool_pitch_deg(self, servo_deg: list[float]) -> float | None:
+        """Angle of the tool axis above the horizontal (0 = level, -90 = pointing down)."""
+        if not self.ok:
+            return None
+        import numpy as np
+
+        mod = self.mod
+        T, _ = mod.fk(mod.to_q(np.array(servo_deg[:5])), np.array(mod.TCP_ESTIMATE))
+        z = float(np.clip((T[:3, :3] @ mod.TOOL_AXIS_LOCAL)[2], -1.0, 1.0))
+        return math.degrees(math.asin(z))
+
+    def cylindrical(self, servo_deg: list[float]) -> list[float] | None:
+        pos = self.tcp_position(servo_deg)
+        return None if pos is None else list(to_cylindrical(pos, self.axis_xy()))
+
+    def workspace(self) -> dict | None:
+        """r, theta, z ranges reachable inside the soft limits (sampled once)."""
+        if not self.ok:
+            return None
+        if getattr(self, "_ws", None) is None:
+            import numpy as np
+
+            lim = self.mod.SOFT_LIMIT_DEG
+            grids = [np.linspace(lim[j][0], lim[j][1], n) for j, n in ((0, 9), (1, 9), (2, 9), (3, 3))]
+            pts = []
+            for a in grids[0]:
+                for b in grids[1]:
+                    for c in grids[2]:
+                        pts.append(self.cylindrical([a, b, c, 90.0, 90.0]))
+            arr = np.array(pts)
+            self._ws = {
+                "r": [float(max(0.0, arr[:, 0].min())), float(arr[:, 0].max())],
+                "theta": [float(arr[:, 1].min()), float(arr[:, 1].max())],
+                "h": [float(arr[:, 2].min()), float(arr[:, 2].max())],
+                "pitch": [-90.0, 90.0],
+            }
+        return self._ws
+
+    def level_j3(self, servo: list[float], pitch_deg: float = 0.0) -> float:
+        """J3 servo angle that gives the requested tool pitch for the other joints."""
+        if not self.ok:
+            raise ValueError("IK unavailable")
+        from scipy.optimize import brentq
+
+        lo, hi = (float(v) for v in self.mod.SOFT_LIMIT_DEG[3])
+
+        def err(j3: float) -> float:
+            pose = list(servo[:5])
+            pose[3] = j3
+            return self.tool_pitch_deg(pose) - pitch_deg
+
+        grid = [lo + (hi - lo) * i / 36 for i in range(37)]
+        vals = [err(g) for g in grid]
+        for a, b, fa, fb in zip(grid, grid[1:], vals, vals[1:], strict=False):
+            if fa == 0:
+                return a
+            if fa * fb < 0:
+                return float(brentq(err, a, b, xtol=1e-4))
+        raise ValueError(f"blocked: cannot keep level, J3 would be outside {lo:g}..{hi:g}")
+
+    def solve_cyl(self, current: list[float], r: float, theta: float, h: float, pitch: float) -> list[float]:
+        """Servo angles J0..J3 (J4 kept) for a cylindrical TCP target and tool pitch."""
+        if not self.ok:
+            raise ValueError(f"IK unavailable ({self.error}). pip install numpy scipy")
+        import numpy as np
+
+        mod = self.mod
+        if r < 0:
+            raise ValueError(f"blocked: radius {r:.1f} mm must be >= 0")
+        start = np.array(current[:5], dtype=float)
+        target = np.array(from_cylindrical(r, theta, h, self.axis_xy()))
+        try:
+            q, _T, _err, _perr = mod.solve(target, np.array(mod.TCP_ESTIMATE), start, False, pitch)
+        except ValueError as exc:
+            raise ValueError(
+                f"blocked: unreachable (r={r:.0f}, theta={theta:.0f}, h={h:.0f}, pitch={pitch:.0f} deg); "
+                "a level tool needs the wrist further out/higher, try a larger r or h"
+            ) from exc
+        servo = [float(v) for v in mod.to_servo(q)]
+        servo[4] = float(current[4])
+        return servo
 
     def path_min_z(self, start: list[float], target: list[float], steps: int = 20) -> tuple[float, float, list[float]] | None:
         """Lowest TCP z (mm) along the straight joint-space path start -> target.
@@ -578,6 +828,8 @@ def apply_home(config: RobotConfig, degrees: list[float]) -> RobotConfig:
 class ArmService:
     """Thread-safe wrapper: the latest slider targets win, moves run one at a time."""
 
+    webcam = None  # robot_arm.vision.webcam.WebCam, set by main()
+
     def __init__(
         self,
         arm: ArmController,
@@ -603,6 +855,10 @@ class ArmService:
         self._busy = False
         self.floor_enabled = True
         self.floor_mm = 5.0
+        self.level_enabled = False
+        self.grip_interp = True  # False: gripper jumps to its target, other joints still interpolate
+        self.level_roll_deg = 28.0
+        self._cyl_lock = threading.Lock()
         threading.Thread(target=self._worker, daemon=True).start()
 
     def source(self, name: str):
@@ -637,6 +893,12 @@ class ArmService:
             "floor_mm": self.floor_mm,
             "guard_available": self.ik.ok,
             "tcp_z_mm": self.tcp_z_mm(),
+            "cyl": self.ik.cylindrical(self.commanded()),
+            "tool_pitch_deg": self.ik.tool_pitch_deg(self.commanded()),
+            "level_enabled": self.level_enabled,
+            "grip_interp": self.grip_interp,
+            "level_roll_deg": self.level_roll_deg,
+            "workspace": self.ik.workspace(),
             "joints": joints,
             "home_source": self.home_source,
             "home_version": self.home_version,
@@ -652,11 +914,24 @@ class ArmService:
                     "light": getattr(cam, "light", None),
                     "brightness": getattr(cam, "brightness", None),
                     "options": view.options() if view is not None else None,
-                    "pi": cam.settings() if hasattr(cam, "settings") else None,
                     "qr": view.results() if view is not None else None,
                     "stats": view.stats() if view is not None else None,
                 }
                 for name, (cam, view) in self.cameras.items()
+            },
+            "webcam": None
+            if self.webcam is None
+            else {
+                "connected": self.webcam.connected,
+                "port": self.webcam.port,
+                "fps": self.webcam.fps,
+                "size": list(self.webcam.size),
+                "focus": self.webcam.focus,
+                "focus_peak": self.webcam.focus_peak,
+                "live_dish": self.webcam.live_dish,
+                "rotate": self.webcam.rotate,
+                "error": self.webcam.last_error,
+                "result": self.webcam.result,
             },
             "error": error,
         }
@@ -676,9 +951,49 @@ class ArmService:
             target = self.commanded()
             for index, deg in {**self._pending, **angles}.items():
                 target[index] = deg
+            angles = dict(angles)
+            if self.level_enabled and any(i in angles for i in (1, 2, 3)):
+                target[3] = angles[3] = self.ik.level_j3(target, 0.0)  # keep the tool horizontal
             self._check_floor(target)
             self._pending.update(angles)
         self._wake.set()
+
+    def move_cyl(self, r: float, theta: float, h: float, pitch: float, extra: dict[int, float] | None = None) -> None:
+        """Move J0..J3 so the TCP is at (r mm, theta deg, h mm) with the given tool pitch."""
+        if not self.arm.ready:
+            raise RobotArmError("press 'Snap to home (startup)' first")
+        if self.level_enabled:
+            pitch = 0.0
+        with self._cyl_lock:
+            with self._lock:
+                base = self.commanded()
+                for index, deg in self._pending.items():
+                    base[index] = deg
+            servo = self.ik.solve_cyl(base, r, theta, h, pitch)
+            angles = {i: servo[i] for i in range(4)}
+            angles.update(extra or {})
+            self.move(angles)
+
+    def set_level(self, enabled: bool, roll_deg: float | None = None) -> None:
+        if roll_deg is not None:
+            low, high = LIMITS_DEG[4]
+            if not low <= roll_deg <= high:
+                raise ValueError(f"J4 roll {roll_deg:g} outside {low:g}..{high:g}")
+            self.level_roll_deg = float(roll_deg)
+        if not enabled:
+            self.level_enabled = False
+            return
+        if not self.arm.ready:
+            raise RobotArmError("press 'Snap to home (startup)' first")
+        cyl = self.ik.cylindrical(self.commanded())
+        if cyl is None:
+            raise ValueError("IK unavailable; cannot keep level")
+        self.level_enabled = True
+        try:
+            self.move_cyl(cyl[0], cyl[1], cyl[2], 0.0, {4: self.level_roll_deg})
+        except Exception:
+            self.level_enabled = False
+            raise
 
     def _check_floor(self, target: list[float]) -> None:
         """Raise when the straight joint path to target dips the TCP below the floor."""
@@ -745,7 +1060,10 @@ class ArmService:
                     current = self.commanded()
                     for index, deg in targets.items():
                         current[index] = deg
-                    self.arm.move_all(current)
+                    if self.grip_interp or 5 not in targets:
+                        self.arm.move_all(current)
+                    else:
+                        self.arm.move_all(current, snap=(5,))
                 except (RobotArmError, ValueError) as exc:
                     self._error = str(exc)
                 finally:
@@ -878,6 +1196,30 @@ def make_handler(service: ArmService) -> type[BaseHTTPRequestHandler]:
                     self.send_header("X-Seq", str(seq))
                     self.end_headers()
                     self.wfile.write(jpeg)
+            elif self.path.startswith("/webcam.jpg"):
+                wc = service.webcam
+                if wc is None:
+                    return self._json({"error": "webcam disabled"}, 404)
+                try:
+                    last = int(self._query("seq", "-1"))
+                except ValueError:
+                    last = -1
+                jpeg, seq = wc.wait_frame(last, timeout=1.0)
+                if jpeg is None or seq == last:
+                    self._json({"error": "no new frame"}, 503)
+                else:
+                    self.send_response(200)
+                    self.send_header("Content-Type", "image/jpeg")
+                    self.send_header("Content-Length", str(len(jpeg)))
+                    self.send_header("Cache-Control", "no-store")
+                    self.send_header("X-Seq", str(seq))
+                    self.end_headers()
+                    self.wfile.write(jpeg)
+            elif self.path.startswith("/webcam_result.jpg"):
+                jpeg = service.webcam.result_jpeg() if service.webcam else None
+                if jpeg is None:
+                    return self._json({"error": "no result yet"}, 404)
+                self._send(200, jpeg, "image/jpeg")
             elif self.path.startswith("/camera.mjpg"):
                 self._stream_camera()
             else:
@@ -919,11 +1261,6 @@ def make_handler(service: ArmService) -> type[BaseHTTPRequestHandler]:
                     if entry is None or entry[1] is None:
                         raise RobotArmError("camera has no image processing")
                     entry[1].set_rotate(int(body["deg"]))
-                elif self.path == "/api/camera/pi":
-                    entry = service.cameras.get("pi")
-                    if entry is None or not hasattr(entry[0], "apply"):
-                        raise RobotArmError("Pi camera not available")
-                    entry[0].apply(**body)
                 elif self.path == "/api/camera/light":
                     entry = service.cameras.get("esp")
                     if entry is None or not hasattr(entry[0], "set_light"):
@@ -935,11 +1272,37 @@ def make_handler(service: ArmService) -> type[BaseHTTPRequestHandler]:
                             entry[0].set_light(bool(body["on"]))
                     except OSError as exc:
                         raise RobotArmError(str(exc)) from exc
+                elif self.path == "/api/cyl/move":
+                    service.move_cyl(
+                        float(body["r"]), float(body["theta"]), float(body["h"]), float(body.get("pitch", 0.0))
+                    )
+                elif self.path == "/api/level":
+                    service.set_level(
+                        bool(body.get("enabled")),
+                        float(body["roll_deg"]) if body.get("roll_deg") is not None else None,
+                    )
+                elif self.path.startswith("/api/webcam/"):
+                    wc = service.webcam
+                    if wc is None:
+                        raise RobotArmError("webcam disabled")
+                    if self.path == "/api/webcam/capture":
+                        result = {"ok": True, "result": wc.capture()}
+                    elif self.path == "/api/webcam/options":
+                        if "rotate_step" in body:
+                            wc.set_rotate((wc.rotate + int(body["rotate_step"])) % 360)
+                        if "live_dish" in body:
+                            wc.live_dish = bool(body["live_dish"])
+                        if body.get("reset_peak"):
+                            wc.reset_peak()
+                    else:
+                        return self._json({"error": "not found"}, 404)
                 elif self.path == "/api/floor":
                     if "floor_mm" in body:
                         service.floor_mm = float(body["floor_mm"])
                     if "enabled" in body:
                         service.floor_enabled = bool(body["enabled"])
+                elif self.path == "/api/gripper_interp":
+                    service.grip_interp = bool(body.get("enabled"))
                 elif self.path == "/api/soften":
                     ms = body.get("ms")
                     if ms is not None and float(ms) < 0:
@@ -964,12 +1327,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--camera-baud", type=int, default=460800, help="must match BAUD in the .ino")
     parser.add_argument("--no-camera", action="store_true")
     parser.add_argument("--camera-rotate", type=int, default=90, choices=[0, 90, 180, 270], help="clockwise degrees")
-    parser.add_argument("--no-pi-camera", action="store_true")
-    parser.add_argument("--pi-rotate", type=int, default=0, choices=[0, 90, 180, 270], help="clockwise degrees")
-    parser.add_argument("--pi-width", type=int, default=1280)
-    parser.add_argument("--pi-height", type=int, default=720)
-    parser.add_argument("--pi-fps", type=int, default=15)
     parser.add_argument("--no-qr", action="store_true", help="rotate only, no QR detection")
+    parser.add_argument("--no-webcam", action="store_true", help="disable the USB webcam tab source")
+    parser.add_argument("--webcam-device", default=None, help="e.g. /dev/video0 (default: auto)")
+    parser.add_argument("--webcam-rotate", type=int, default=0, choices=[0, 90, 180, 270], help="clockwise degrees")
     parser.add_argument(
         "--simulation-only",
         action="store_true",
@@ -989,8 +1350,7 @@ def main(argv: list[str] | None = None) -> int:
             esp = SerialCamera(None if args.camera_port == "auto" else args.camera_port, args.camera_baud)
         except Exception:
             esp = None
-        pi = None if args.no_pi_camera else PiCamera(args.pi_width, args.pi_height, args.pi_fps)
-        for name, cam, rotate in (("esp", esp, args.camera_rotate), ("pi", pi, args.pi_rotate)):
+        for name, cam, rotate in (("esp", esp, args.camera_rotate),):
             if cam is None:
                 continue
             try:
@@ -1013,6 +1373,11 @@ def main(argv: list[str] | None = None) -> int:
         simulation_only=args.simulation_only,
         cameras=cameras,
     )
+    if not args.no_webcam:
+        from robot_arm.vision.webcam import WebCam
+
+        service.webcam = WebCam(args.webcam_device, args.webcam_rotate)
+        service.webcam.start()
     if args.simulation_only:
         # Authorize the normal trajectory/state machinery against a driver
         # that cannot touch I2C. This keeps hardware mode's confirmation
