@@ -231,16 +231,29 @@ def annotate(img, dish, zones, disks, mm_per_px):
     return out
 
 
-def process(path):
-    img = load_image(path)
+def analyze(img):
+    """Detect dish, disks and zones in a BGR image. Raises ValueError when no dish is found.
+
+    Returns dict: dish (x, y, r px), mm_per_px, disks [(x, y, r)], zones [(x, y, r, clipped)],
+    annotated image.
+    """
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
     dish = detect_dish(gray, img.shape[1])
-    assert dish is not None and dish[2] > 0, "failed to detect petri dish outline"
-
+    if dish is None or dish[2] <= 0:
+        raise ValueError("failed to detect petri dish outline")
     mm_per_px = DISH_DIAMETER_MM / (2 * dish[2])
     disks = detect_disks(gray, dish, mm_per_px)
     zones = detect_zones(gray, dish, disks, mm_per_px)
+    return {
+        "dish": dish, "mm_per_px": mm_per_px, "disks": disks, "zones": zones,
+        "annotated": annotate(img, dish, zones, disks, mm_per_px),
+    }
+
+
+def process(path):
+    img = load_image(path)
+    res = analyze(img)
+    dish, mm_per_px, disks, zones = res["dish"], res["mm_per_px"], res["disks"], res["zones"]
     zone_at = {(x, y): (r, clipped) for x, y, r, clipped in zones}
 
     print(f"dish: R={dish[2] * mm_per_px:.1f}mm  ({mm_per_px:.4f} mm/px)")
@@ -256,7 +269,7 @@ def process(path):
         print(f"disk at ({x:.0f},{y:.0f}) R={r * mm_per_px:.1f}mm -> {desc}")
     print(f"{len(disks)} disk(s), {len(zones)} with a measurable zone")
 
-    return annotate(img, dish, zones, disks, mm_per_px)
+    return res["annotated"]
 
 
 def main():
