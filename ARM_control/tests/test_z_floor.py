@@ -41,6 +41,7 @@ def service(ik, pose=SAFE):
     svc.ik = ik
     svc.floor_enabled = True
     svc.floor_mm = 5.0
+    svc.level_enabled = False
     svc.home_deg = list(SAFE)
     import threading
 

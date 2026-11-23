@@ -36,5 +36,5 @@ def test_simulation_only_main_never_constructs_pca9685(monkeypatch) -> None:
 
     monkeypatch.setattr(web_gui, "PCA9685Driver", forbidden)
     monkeypatch.setattr(web_gui, "ThreadingHTTPServer", Server)
-    assert web_gui.main(["--simulation-only", "--no-camera"]) == 0
+    assert web_gui.main(["--simulation-only", "--no-camera", "--no-webcam"]) == 0
     assert constructed == []
