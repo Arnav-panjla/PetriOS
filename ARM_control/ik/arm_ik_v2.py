@@ -101,13 +101,16 @@ def limits_q():
     v2 = (SOFT_LIMIT_DEG[:,1]-URDF_ZERO_SERVO)*SERVO_SIGN
     return np.deg2rad(np.minimum(v1, v2)), np.deg2rad(np.maximum(v1, v2))
 
-def solve(target, tcp, start_servo, hold_direction=False):
+def solve(target, tcp, start_servo, hold_direction=False, pitch_deg=None):
+    """pitch_deg (optional): tool axis angle above the horizontal, 0 = level.
+    Yaw is left free. When set, the 4th returned value is the pitch error in degrees."""
     target = np.asarray(target,dtype=float)
     q0 = to_q(start_servo)
     T0,_ = fk(q0,tcp)
     axis_target = T0[:3,:3] @ TOOL_AXIS_LOCAL if hold_direction else None
     lo, hi = limits_q()
     q0 = np.clip(q0,lo+1e-7,hi-1e-7)
+    sin_pitch = np.sin(np.deg2rad(pitch_deg)) if pitch_deg is not None else 0.0
 
     def residual(q):
         T,_ = fk(q,tcp)
@@ -115,6 +118,8 @@ def solve(target, tcp, start_servo, hold_direction=False):
         if axis_target is not None:
             # Preserve tool approach direction (2 orientation DOF), not full roll.
             out.append(0.8*(T[:3,:3] @ TOOL_AXIS_LOCAL-axis_target))
+        if pitch_deg is not None:
+            out.append(np.array([2.0*((T[:3,:3] @ TOOL_AXIS_LOCAL)[2]-sin_pitch)]))
         # Prefer minimal change from the NEW resting pose.
         out.append(0.003*(q-q0))
         return np.concatenate(out)
@@ -134,11 +139,15 @@ def solve(target, tcp, start_servo, hold_direction=False):
         if axis_target is not None:
             cosine=np.clip((T[:3,:3]@TOOL_AXIS_LOCAL)@axis_target,-1,1)
             axiserr=float(np.rad2deg(np.arccos(cosine)))
+        if pitch_deg is not None:
+            z=np.clip((T[:3,:3]@TOOL_AXIS_LOCAL)[2],-1,1)
+            axiserr=float(abs(np.rad2deg(np.arcsin(z))-pitch_deg))
         sols.append((poserr,axiserr,np.linalg.norm(res.x-q0),res.x,T))
     # Prefer solutions satisfying both tolerances, closest to starting joints.
-    valid=[s for s in sols if s[0]<.003 and (not hold_direction or s[1]<3.)]
+    check_dir = hold_direction or pitch_deg is not None
+    valid=[s for s in sols if s[0]<.003 and (not check_dir or s[1]<(1. if pitch_deg is not None else 3.))]
     if not valid:
-        best=min(sols,key=lambda s:s[0]+(s[1]/180 if hold_direction else 0))
+        best=min(sols,key=lambda s:s[0]+(s[1]/180 if check_dir else 0))
         raise ValueError(f'No sufficiently accurate solution: closest '
                          f'position error {best[0]*1000:.1f} mm, '
                          f'direction error {best[1]:.2f} deg. '
