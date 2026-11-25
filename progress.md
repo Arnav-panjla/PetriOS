@@ -12,7 +12,7 @@ Repository layout:
 | `vision/` | Dish, disc and zone detector (`petri_detect.py`) and the disc-label reading work (`antibiotic_vision/`) |
 | `Simulation/`, `assets/`, `research/`, `old_codes/` | Gazebo/URDF work, CAD renders, notes, earlier code |
 
-Sections: 1 hardware and platform, 2 arm control and GUI, 3 cameras, 4 vision pipelines, 5 what failed, 6 open items, 7 how to run and test.
+Sections: 1 hardware and platform, 2 arm control and GUI, 3 cameras, 4 vision pipelines (Part C: Qwen on the lab GPU, plus the light ring), 5 what failed, 6 open items, 7 how to run and test.
 
 ---
 
@@ -153,6 +153,32 @@ Two datasets that must never be mixed when quoting accuracy:
 
 Detailed method catalogue and process write-up: `vision/antibiotic_vision/BTP_FULL_REPORT.md` and `PROCESS_REPORT.md`.
 
+### Part C: reading disc labels with Qwen on the lab GPU (new, in the Webcam tab)
+Gemma 3 4B was meant to run on the Pi through Ollama. Instead the Pi now sends each disc to **`qwen3.5:9b` served by Ollama on the lab GPU machine** (RTX 5070, 12 GB, shared with other users' jobs). Nothing was pulled or trained for this; the model was already on the server.
+
+How it works (`ARM_control/src/robot_arm/vision/vlm.py`, hooked into `webcam.py`):
+1. Press **Capture and detect**. The normal detection runs and shows at once.
+2. If `OLLAMA_URL` is set, a background thread crops every detected disc (1.2 x radius, upscaled to about 320 px) and asks Qwen for the text. Without `OLLAMA_URL` nothing changes.
+3. **Rotation voting.** The stamp can be at any angle, so each crop is sent at 8 rotations (`VLM_ANGLES`, default 8). Replies are cleaned to `LETTERS NUMBER`, and the most common valid reply wins; a reply with a dose beats letters-only. Replies longer than 14 characters count as `?`.
+4. The result image is redrawn with the label in green above each disc, the table has a **label** column, and the status line says "reading disk labels on the GPU..." while it works. The terminal also prints each disc and the answer at every angle. Moving a tuning slider re-runs detection and clears the labels.
+5. Request settings: `think: false`, temperature 0, 32 tokens, no proxy (so the lab proxy variables cannot break the localhost tunnel). Prompt: the "Read the text printed on the disc..." text you supplied (one line of letters, or two lines combined as `LETTERS NUMBER`, no explanations, no alternatives).
+
+Connecting to the GPU: the Pi opens an SSH tunnel to the lab server (`ee1230978@10.225.67.239`, local port 11435 to the server's 11434) and sets `OLLAMA_URL=http://127.0.0.1:11435`. `ARM_control/start_vision.sh` does all of it: clears old tunnels and GUI, opens the tunnel, checks that `qwen3.5:9b` answers, starts the GUI (default `--simulation-only`, any arguments you pass replace that) and closes the tunnel on exit. Written and syntax-checked, **not yet run end to end**.
+
+What happened:
+- **First attempt: every request timed out.** The model itself was fine (8.5 s for "say hi" on the server). The tunnel session was stale: the Pi accepted connections on the local port but nothing came back. A fresh tunnel fixed it. The script now removes any old tunnel first.
+- **First reads were poor.** With one unrotated crop per disc, 4 of 6 came back unreadable and the rest were wrong (`SDM`, `CZD 30`, `OPM 30`). Two causes found by looking at the saved crops: the stamps were rotated (one upside down) and each crop was only **42 x 42 px**, blurred by 7x upscaling.
+- **Rotation voting made it much better, not perfect.** Same plate, 6 discs: `CN 30, CRO 10, CN 125, CPM 30, CLR 15, CMZ 30`. Letters are often close but wrong (probably `CZ 30`, `CRO 30` and similar). No ground truth was written down for this frame, so there is no accuracy number.
+- Prompt switched to the shorter instruction above. **Not re-measured yet.**
+- The classical alignment steps of Part B are not used here, so Qwen gets raw colour crops. Using the aligned binary discs from Part B as Qwen's input is untried.
+
+### Light ring around the webcam (new, hardware not confirmed working)
+A 16-LED WS2812 ring for even lighting. `ARM_control/src/robot_arm/hardware/led_ring.py` drives it over SPI (GPIO10 / pin 19, 6.4 MHz, each WS2812 bit sent as one SPI byte, GRB order). If `spidev` or SPI is missing it logs a warning and does nothing. The Webcam tab has a **Light ring** card: on/off, colour picker, brightness slider and a **White** button (255,255,255, the standard colour and the default). Endpoint `/api/led`; state is included in the GUI state. Flags `--no-led` and `--led-count`. `spidev` was added to the `hardware` extra in `pyproject.toml` and installed in the venv. The driver opens SPI and sends frames, but nobody has seen the ring light up yet.
+
+Wiring chosen: D0 to pin 19 (a 330 ohm resistor in series is recommended), ring GND to the separate 5V supply GND and to a Pi GND pin (pin 20), VCC to the separate 5V supply only, D1 unconnected.
+- **Unresolved: 5V measured on D0.** That is not normal for a data input driven from a 3.3V GPIO and can damage the Pi. The cause (wrong pad, board with a pull-up, or a wiring short) was not found. Do not connect D0 to the Pi until it reads about 0 V when disconnected.
+- If colours come out swapped, change the order in `_show()` from `(g, r, b)` to `(r, g, b)`. If it flickers, add a 74AHCT125 level shifter on D0.
+
 ---
 
 ## 5. Summary of failures and root causes
@@ -171,6 +197,9 @@ Detailed method catalogue and process write-up: `vision/antibiotic_vision/BTP_FU
 | Disc detection | Lettered discs rejected | Flatness test counted ink | Percentile-based test |
 | Dish detection | Blue circle wrong | Single Hough pass, fixed radius range | Scored candidates, sliders, manual override |
 | Label reading | Classical OCR and angle estimators | Too few ink pixels, wrong font class | Geometry plus Gemma 3 4B |
+| GPU link | Every Qwen request timed out | Stale SSH tunnel; model itself was fine | Fresh tunnel; `start_vision.sh` clears old ones first |
+| Qwen on live frames | Unreadable or wrong labels | Rotated stamps and 42 px crops | 8-angle voting (better, not exact); resolution still limits it |
+| Light ring | Not confirmed lighting | 5V seen on D0, cause unknown | Open, see section 4 Part C |
 
 ---
 
@@ -181,7 +210,11 @@ Detailed method catalogue and process write-up: `vision/antibiotic_vision/BTP_FU
 - **Camera resolution.** The webcam delivers 640x480 only. Zone and disc detection quality at that size is untested beyond a few frames.
 - **Detector tuning data.** Thresholds are tuned on three sample plates and one webcam frame. Collect more plates through the Webcam tab and tune.
 - **Dish scale assumption.** Millimetre values assume a 90 mm dish that is fully in view and fills most of the frame, with the camera looking straight down.
-- **Code reading is not integrated into the GUI.** The Gemma 3 pipeline runs from scripts in `vision/antibiotic_vision/` and needs Ollama with `gemma3:4b`. It is not in the Webcam tab yet.
+- **Code reading is only partly integrated.** The Webcam tab now shows Qwen labels from the lab GPU (section 4 Part C), but it needs the SSH tunnel and the lab network or VPN, and the labels are often wrong by a letter. The 12/12 Gemma pipeline in `vision/antibiotic_vision/` is still separate scripts and is not used by the GUI.
+- **Label accuracy on live frames is unknown.** No ground truth for the webcam plate; the 42 px crops are the main limit. Ideas not tried: more pixels per disc (closer camera, higher resolution), aligned binary crops from Part B as input, a valid-name list (you ruled out snapping earlier, so only with your approval).
+- **The light ring is unverified,** and the 5V on D0 must be explained before wiring it to the Pi.
+- **`start_vision.sh` has not been run end to end.** Run it once and check the tunnel check, GUI start and cleanup on Ctrl+C.
+- **The GPU is shared.** Another Python job was using it at about 89 percent; Qwen can be slow when that happens.
 - **Level at low heights** is geometrically impossible with the current tool length.
 - **Mechanical work remaining:** the arm still needs two to three links lengthened and a wider base; the drawing of the modified arm is not done; the URDF and world files are not checked in.
 - **ESP32 firmware** must be re-flashed for the brightness slider to work (the old firmware ignores `B`).
@@ -196,6 +229,13 @@ python -m robot_arm.interfaces.web_gui --host 127.0.0.1 --port 8000
 # flags: --simulation-only, --no-camera, --no-pi-camera, --no-webcam,
 #        --webcam-device /dev/video0, --webcam-rotate 90, --camera-port, --pi-width/--pi-height/--pi-fps
 # tunnel from the laptop:  ssh -L 8000:localhost:8000 <user>@<pi>
+
+# GUI with Qwen labels from the lab GPU (opens the SSH tunnel, then the GUI; Ctrl+C closes both)
+./start_vision.sh                     # default: --simulation-only (motors disabled)
+./start_vision.sh --port 8000         # real arm: pass arguments without --simulation-only
+# overrides: GPU_USER, GPU_HOST, LOCAL_PORT, VLM_MODEL; debug: VLM_SAVE_CROPS=1, VLM_ANGLES=8
+# by hand:  ssh -N -L 11435:127.0.0.1:11434 ee1230978@10.225.67.239
+#           export OLLAMA_URL=http://127.0.0.1:11435
 
 # tests
 .venv/bin/python -m pytest -q
