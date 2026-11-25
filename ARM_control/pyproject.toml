@@ -11,7 +11,7 @@ requires-python = ">=3.12"
 dependencies = ["PyYAML"]
 
 [project.optional-dependencies]
-hardware = ["adafruit-circuitpython-servokit"]
+hardware = ["adafruit-circuitpython-servokit", "spidev"]
 dev = ["pytest"]
 vision = ["pyserial", "numpy", "scipy", "opencv-contrib-python-headless"]
 

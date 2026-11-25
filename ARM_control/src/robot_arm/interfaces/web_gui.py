@@ -252,6 +252,14 @@ canvas:active{cursor:grabbing}
     <button class="gray" id="wc_rot">Rotate 90&deg;</button>
     <button class="gray" id="wc_reset">Reset focus peak</button>
     <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--tx2)"><input type="checkbox" id="wc_live"> Live dish outline</label></div>
+    <details class="card" open style="margin-top:10px"><summary>Light ring <small id="led_stat"></small></summary><div class="body">
+     <div class="btns" style="align-items:center">
+      <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="led_on"> On</label>
+      <input type="color" id="led_color" value="#ffffff" aria-label="Light colour" style="width:44px;height:30px;padding:0;border:0;background:none">
+      <button class="gray" id="led_white">White</button>
+     </div>
+     <div class="jctl" style="margin:8px 0 0"><span style="width:90px;font-size:12px">Brightness</span><input type="range" id="led_bri" min="0" max="100" step="1" value="50"><span class="val" id="led_bri_v">50</span></div>
+    </div></details>
    </div>
    <div>
     <img id="wc_resimg" class="camimg" style="max-height:480px;display:none" alt="Annotated capture">
@@ -631,6 +639,22 @@ function wcTick(){
     $('wc_resinfo').textContent=`${r.time}: dish R=${r.dish_r_mm.toFixed(1)} mm (${r.mm_per_px.toFixed(4)} mm/px), ${r.disks.length} disk(s), focus ${r.focus.toFixed(0)}`+(r.vlm==='reading'?' - reading disk labels on the GPU...':'');
     $('wc_res').innerHTML='<tr class="muted"><td>disk</td><td>R mm</td><td>zone R mm</td><td>label</td></tr>'+r.disks.map((d,i)=>`<tr><td>#${i+1} (${d.x.toFixed(0)},${d.y.toFixed(0)})</td><td>${d.r_mm.toFixed(1)}</td><td>${d.zone_mm==null?'none':d.zone_mm.toFixed(1)+(d.clipped?' (lower bound)':'')}</td><td>${d.label||(r.vlm==='reading'?'...':'')}</td></tr>`).join('')}
 }
+/* ---- light ring ---- */
+let ledT=null;
+function ledSend(body){clearTimeout(ledT);ledT=setTimeout(()=>api('/api/led',body),120)}
+$('led_on').onchange=()=>ledSend({on:$('led_on').checked});
+$('led_color').oninput=()=>ledSend({color:$('led_color').value,on:true});
+$('led_bri').oninput=()=>{$('led_bri_v').textContent=$('led_bri').value;ledSend({brightness:$('led_bri').value/100})};
+$('led_white').onclick=()=>api('/api/led',{white:true});
+function ledTick(){
+  const l=state&&state.led;
+  $('led_stat').textContent=!l?'(disabled)':(l.available?'':'(SPI not available - no light)');
+  if(!l)return;
+  if(document.activeElement!==$('led_on'))$('led_on').checked=l.on;
+  if(document.activeElement!==$('led_color'))$('led_color').value='#'+l.color.map(c=>c.toString(16).padStart(2,'0')).join('');
+  if(document.activeElement!==$('led_bri')){$('led_bri').value=Math.round(l.brightness*100);$('led_bri_v').textContent=$('led_bri').value}
+}
+setInterval(ledTick,700);
 setInterval(wcTick,500);
 let wcT=null;const wcMan={frame:[640,480]};
 function wcSend(extra){clearTimeout(wcT);wcT=setTimeout(async()=>{
@@ -910,6 +934,7 @@ class ArmService:
     """Thread-safe wrapper: the latest slider targets win, moves run one at a time."""
 
     webcam = None  # robot_arm.vision.webcam.WebCam, set by main()
+    led = None  # robot_arm.hardware.led_ring.LedRing, set by main()
 
     def __init__(
         self,
@@ -1029,6 +1054,7 @@ class ArmService:
                 "manual_dish": self.webcam.manual_dish,
                 "spec": self.webcam.spec(),
             },
+            "led": None if self.led is None else self.led.state(),
             "error": error,
         }
 
@@ -1523,6 +1549,13 @@ def make_handler(service: ArmService) -> type[BaseHTTPRequestHandler]:
                         service.floor_mm = float(body["floor_mm"])
                     if "enabled" in body:
                         service.floor_enabled = bool(body["enabled"])
+                elif self.path == "/api/led":
+                    if service.led is None:
+                        raise RobotArmError("LED ring disabled")
+                    if body.get("white"):
+                        service.led.white()
+                    service.led.set(body.get("on"), body.get("color"), body.get("brightness"))
+                    result = {"ok": True, "led": service.led.state()}
                 elif self.path == "/api/gripper_interp":
                     service.grip_interp = bool(body.get("enabled"))
                 elif self.path == "/api/soften":
@@ -1551,6 +1584,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--camera-rotate", type=int, default=90, choices=[0, 90, 180, 270], help="clockwise degrees")
     parser.add_argument("--no-qr", action="store_true", help="rotate only, no QR detection")
     parser.add_argument("--no-webcam", action="store_true", help="disable the USB webcam tab source")
+    parser.add_argument("--no-led", action="store_true", help="disable the 16-LED WS2812 ring (SPI, GPIO10)")
+    parser.add_argument("--led-count", type=int, default=16)
     parser.add_argument("--webcam-device", default=None, help="e.g. /dev/video0 (default: auto)")
     parser.add_argument("--webcam-rotate", type=int, default=0, choices=[0, 90, 180, 270], help="clockwise degrees")
     parser.add_argument(
@@ -1600,6 +1635,10 @@ def main(argv: list[str] | None = None) -> int:
 
         service.webcam = WebCam(args.webcam_device, args.webcam_rotate)
         service.webcam.start()
+    if not args.no_led:
+        from robot_arm.hardware.led_ring import LedRing
+
+        service.led = LedRing(args.led_count)
     if args.simulation_only:
         # Authorize the normal trajectory/state machinery against a driver
         # that cannot touch I2C. This keeps hardware mode's confirmation
@@ -1621,6 +1660,8 @@ def main(argv: list[str] | None = None) -> int:
                 view.stop()
             cam.stop()
         server.server_close()
+        if service.led is not None:
+            service.led.close()
         driver.close()
     return 0
 
