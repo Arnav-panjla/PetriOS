@@ -158,10 +158,11 @@ Gemma 3 4B was meant to run on the Pi through Ollama. Instead the Pi now sends e
 
 How it works (`ARM_control/src/robot_arm/vision/vlm.py`, hooked into `webcam.py`):
 1. Press **Capture and detect**. The normal detection runs and shows at once.
-2. If `OLLAMA_URL` is set, a background thread crops every detected disc (1.2 x radius, upscaled to about 320 px) and asks Qwen for the text. Without `OLLAMA_URL` nothing changes.
-3. **Rotation voting.** The stamp can be at any angle, so each crop is sent at 8 rotations (`VLM_ANGLES`, default 8). Replies are cleaned to `LETTERS NUMBER`, and the most common valid reply wins; a reply with a dose beats letters-only. Replies longer than 14 characters count as `?`.
-4. The result image is redrawn with the label in green above each disc, the table has a **label** column, and the status line says "reading disk labels on the GPU..." while it works. The terminal also prints each disc and the answer at every angle. Moving a tuning slider re-runs detection and clears the labels.
-5. Request settings: `think: false`, temperature 0, 32 tokens, no proxy (so the lab proxy variables cannot break the localhost tunnel). Prompt: the "Read the text printed on the disc..." text you supplied (one line of letters, or two lines combined as `LETTERS NUMBER`, no explanations, no alternatives).
+2. If `OLLAMA_URL` is set, a background thread prepares every detected disc and asks Qwen for the text. Without `OLLAMA_URL` nothing changes.
+3. **Preprocessing (new, reuses Part B).** For each disc the GUI detector found, `vlm.prepare_disk` calls `extract_binary_discs.make_binary_disc` (crop, upscale to 300 px, Otsu: black letters on white) and then `align_binary_discs` (`strip_disc_rim`, method C two-line centroids, `apply_and_pick_flip`) to make the stamp upright. The disc position comes from the GUI detector, not Hough. Morphology stays off (it destroys letters on small discs). No dictionary. If this step fails for a disc, that disc falls back to the old raw colour crop (1.2 x radius, about 320 px, 8 rotations). `VLM_ALIGN=0` turns the new preprocessing off.
+4. **Voting.** The aligned crop is sent at a full sweep every 45 degrees (8 calls per disc; `VLM_ALIGNED_STEP=30` gives 12). The sweep covers the aligner's uncertain flip and alignment error. `VLM_ALIGNED_ANGLES` (comma list) overrides it. Replies are cleaned to `LETTERS NUMBER`, and the most common valid reply wins; a reply with a dose beats letters-only. Replies longer than 14 characters count as `?`. (Fallback crops use `VLM_ANGLES` rotations, default 8.) Written and tested only up to the aligned image; **not yet run against Qwen on live frames**.
+5. The result image is redrawn with the label in green above each disc, the table has a **label** column, and the status line says "reading disk labels on the GPU..." while it works. The terminal also prints each disc and the answer at every angle. Moving a tuning slider re-runs detection and clears the labels.
+6. Request settings: `think: false`, temperature 0, 32 tokens, no proxy (so the lab proxy variables cannot break the localhost tunnel). Prompt: the "Read the text printed on the disc..." text you supplied (one line of letters, or two lines combined as `LETTERS NUMBER`, no explanations, no alternatives).
 
 Connecting to the GPU: the Pi opens an SSH tunnel to the lab server (`ee1230978@10.225.67.239`, local port 11435 to the server's 11434) and sets `OLLAMA_URL=http://127.0.0.1:11435`. `ARM_control/start_vision.sh` does all of it: clears old tunnels and GUI, opens the tunnel, checks that `qwen3.5:9b` answers, starts the GUI (default `--simulation-only`, any arguments you pass replace that) and closes the tunnel on exit. Written and syntax-checked, **not yet run end to end**.
 
@@ -210,8 +211,8 @@ Wiring chosen: D0 to pin 19 (a 330 ohm resistor in series is recommended), ring 
 - **Camera resolution.** The webcam delivers 640x480 only. Zone and disc detection quality at that size is untested beyond a few frames.
 - **Detector tuning data.** Thresholds are tuned on three sample plates and one webcam frame. Collect more plates through the Webcam tab and tune.
 - **Dish scale assumption.** Millimetre values assume a 90 mm dish that is fully in view and fills most of the frame, with the camera looking straight down.
-- **Code reading is only partly integrated.** The Webcam tab now shows Qwen labels from the lab GPU (section 4 Part C), but it needs the SSH tunnel and the lab network or VPN, and the labels are often wrong by a letter. The 12/12 Gemma pipeline in `vision/antibiotic_vision/` is still separate scripts and is not used by the GUI.
-- **Label accuracy on live frames is unknown.** No ground truth for the webcam plate; the 42 px crops are the main limit. Ideas not tried: more pixels per disc (closer camera, higher resolution), aligned binary crops from Part B as input, a valid-name list (you ruled out snapping earlier, so only with your approval).
+- **Code reading is only partly integrated.** The Webcam tab now shows Qwen labels from the lab GPU (section 4 Part C), but it needs the SSH tunnel and the lab network or VPN, and the labels are often wrong by a letter. The GUI now reuses the Otsu binarising and method C alignment from `vision/antibiotic_vision/` (Part C step 3), but not the morph step, the rim-blob strip or the Gemma 3 reader, so the 12/12 result is not reproduced in the GUI.
+- **Label accuracy on live frames is unknown.** No ground truth for the webcam plate; the 42 px crops are the main limit. Aligned binary crops from Part B are now the input but are untested on live frames. Ideas not tried: more pixels per disc (closer camera, higher resolution), a valid-name list (you ruled out snapping earlier, so only with your approval).
 - **The light ring is unverified,** and the 5V on D0 must be explained before wiring it to the Pi.
 - **`start_vision.sh` has not been run end to end.** Run it once and check the tunnel check, GUI start and cleanup on Ctrl+C.
 - **The GPU is shared.** Another Python job was using it at about 89 percent; Qwen can be slow when that happens.
@@ -233,7 +234,7 @@ python -m robot_arm.interfaces.web_gui --host 127.0.0.1 --port 8000
 # GUI with Qwen labels from the lab GPU (opens the SSH tunnel, then the GUI; Ctrl+C closes both)
 ./start_vision.sh                     # default: --simulation-only (motors disabled)
 ./start_vision.sh --port 8000         # real arm: pass arguments without --simulation-only
-# overrides: GPU_USER, GPU_HOST, LOCAL_PORT, VLM_MODEL; debug: VLM_SAVE_CROPS=1, VLM_ANGLES=8
+# overrides: GPU_USER, GPU_HOST, LOCAL_PORT, VLM_MODEL; debug: VLM_SAVE_CROPS=1, VLM_ANGLES=8 (fallback crops only), VLM_ALIGN=0 (skip Otsu/alignment), VLM_ALIGNED_STEP=45 (or 30), VLM_ALIGNED_ANGLES=0,180 (explicit list)
 # by hand:  ssh -N -L 11435:127.0.0.1:11434 ee1230978@10.225.67.239
 #           export OLLAMA_URL=http://127.0.0.1:11435
 

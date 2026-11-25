@@ -29,6 +29,7 @@ from pathlib import Path
 from robot_arm.config import RobotConfig
 from robot_arm.control.arm_controller import STARTUP_WARNING, ArmController
 from robot_arm.hardware.driver import NoOpDriver, PCA9685Driver
+from robot_arm.motion.session import SessionRecorder
 from robot_arm.utils.errors import RobotArmError
 from robot_arm.vision.esp32_serial import SerialCamera
 from robot_arm.vision.qr_view import QRView
@@ -37,6 +38,7 @@ logger = logging.getLogger(__name__)
 
 IK_PATH = Path(__file__).resolve().parents[3] / "ik" / "arm_ik_v2.py"
 HOME_FILE = RobotConfig.default_dir() / "home.txt"
+RECORDINGS_DIR = RobotConfig.default_dir().parent / "recordings"
 
 # Used only when the IK module cannot be imported. Same values as arm_ik_v2.py
 # (J0-J4) plus the gripper servo, so the model still draws.
@@ -179,6 +181,9 @@ canvas:active{cursor:grabbing}
 .meter{height:10px;background:var(--well);border-radius:5px;overflow:hidden;margin-top:8px}
 #wc_bar{height:100%;width:0;background:var(--ok);transition:width .15s}
 #wc_res td{padding:3px 10px 3px 0}
+#sess_tbl td,#sess_tbl th{padding:3px 10px 3px 0;text-align:right;font-weight:400}
+#sess_tbl th{color:var(--tx2)}
+#sess_tbl tr.cur td{font-weight:700;color:#4da3ff}
 .wcrow{display:flex;gap:18px;flex-wrap:wrap}
 .wcrow>div{flex:1 1 360px}
 .btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
@@ -225,6 +230,13 @@ canvas:active{cursor:grabbing}
    <div class="form"><label>Speed <select id="petri_speed"><option value="1.5">1.5×</option><option value="2.0">2.0×</option><option value="3.0" selected>3.0×</option><option value="4.0">4.0×</option><option value="6.0">6.0×</option></select></label>
    <button class="warn" id="petri_run" disabled>Follow Petri path</button></div>
    <pre id="petri_status">Petri path is idle.</pre>
+  </div></details>
+  <details class="card" id="sess" open><summary>Session recorder <small>saves joint poses to recordings/</small></summary><div class="body">
+   <p class="muted" style="font-size:13px">Move the arm with the sliders, then press Record to save every joint's angle as one point. Play goes to each point in order using the arm's own interpolation.</p>
+   <div class="form"><button id="sess_start">Start session</button><button id="sess_rec" disabled>Record</button><button class="gray" id="sess_end" disabled>End session</button></div>
+   <div class="form"><select id="sess_file" aria-label="Session to play"></select><button class="warn" id="sess_play" disabled>Play</button><button class="gray" id="sess_stop" disabled>Stop</button></div>
+   <pre id="sess_msg">No session.</pre>
+   <div style="overflow:auto;max-height:260px"><table id="sess_tbl" style="font-size:13px"></table></div>
   </div></details>
  </div>
  <div class="col view">
@@ -290,6 +302,25 @@ async function petriRefresh(){const s=await api('/api/petri/status');if(s.error)
   $('petri_status').textContent=s.message|| (s.active?'Petri transfer is running…':'Petri path is idle.');}
 $('petri_run').onclick=async()=>{const r=await api('/api/petri/run',{speed:+$('petri_speed').value});if(!r.error)petriRefresh()};
 setInterval(petriRefresh,1000);
+let sessFiles='';
+async function sessRefresh(){const s=await api('/api/session/status');if(s.error)return;
+  const rdy=!!(state&&state.ready);
+  $('sess_start').disabled=s.playing;
+  $('sess_rec').disabled=!rdy||!s.active||s.playing;
+  $('sess_end').disabled=!s.active||s.playing;
+  $('sess_play').disabled=!rdy||s.playing||!s.files.length;
+  $('sess_stop').disabled=!s.playing;
+  const key=s.files.join('|'),sel=$('sess_file');
+  if(key!==sessFiles){const keep=sel.value;sessFiles=key;
+    sel.innerHTML=s.files.map(f=>`<option value="${f}">${f}</option>`).join('');
+    if(keep&&s.files.includes(keep))sel.value=keep}
+  $('sess_msg').textContent=(s.message||'No session.')+(s.active?'\\nRecording to '+s.path:'');
+  $('sess_tbl').innerHTML='<tr><th>#</th><th>time</th>'+[0,1,2,3,4,5].map(i=>`<th>J${i}</th>`).join('')+'</tr>'
+    +s.points.map(p=>`<tr class="${s.playing&&p.n===s.play_index?'cur':''}"><td>${p.n}</td><td>${p.time}</td>${p.angles.map(a=>`<td>${a.toFixed(1)}</td>`).join('')}</tr>`).join('')}
+const sessDo=a=>async()=>{await api('/api/session',{action:a,file:$('sess_file').value});sessRefresh()};
+$('sess_start').onclick=sessDo('start');$('sess_rec').onclick=sessDo('record');$('sess_end').onclick=sessDo('end');
+$('sess_play').onclick=sessDo('play');$('sess_stop').onclick=sessDo('stop');
+setInterval(sessRefresh,800);
 const CYL=[['r','r','mm',1],['h','height z','mm',1],['t','theta','deg',0.5],['p','tool pitch','deg',0.5]];
 let cylLast=0,cylTimer=null;
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
@@ -935,6 +966,10 @@ class ArmService:
 
     webcam = None  # robot_arm.vision.webcam.WebCam, set by main()
     led = None  # robot_arm.hardware.led_ring.LedRing, set by main()
+    _playing = False  # a recorded session is being played back
+    _play_index = 0
+    _play_points: list = []
+    _play_message = ""
 
     def __init__(
         self,
@@ -974,6 +1009,9 @@ class ArmService:
         self.grip_interp = True  # False: gripper jumps to its target, other joints still interpolate
         self.level_roll_deg = 28.0
         self._cyl_lock = threading.Lock()
+        self.session = SessionRecorder(RECORDINGS_DIR)
+        self._session_lock = threading.Lock()
+        self._play_stop = threading.Event()
         threading.Thread(target=self._worker, daemon=True).start()
 
     def source(self, name: str):
@@ -1156,7 +1194,116 @@ class ArmService:
             with self._petri_lock:
                 self._petri_active = False
 
+    def session_status(self) -> dict:
+        rec = self.session
+        shown = rec.points if rec.active and not self._playing else self._play_points
+        return {
+            "active": rec.active,
+            "file": rec.file.name if rec.file else None,
+            "path": str(rec.file) if rec.file else None,
+            "points": list(shown),
+            "files": rec.files(),
+            "playing": self._playing,
+            "play_index": self._play_index,
+            "message": self._play_message,
+        }
+
+    def session_start(self) -> None:
+        if self._playing:
+            raise RobotArmError("stop the playback first")
+        path = self.session.start()
+        self._play_points = []
+        self._play_message = f"Session started: {path.name}"
+
+    def session_end(self) -> None:
+        if self.session.active:
+            self._play_points = list(self.session.points)
+            self._play_message = f"Session saved: {self.session.file.name} ({len(self.session.points)} point(s))"
+        self.session.end()
+
+    def session_record(self) -> dict:
+        """Snapshot every joint's commanded angle into the session file."""
+        if self._playing:
+            raise RobotArmError("cannot record while playing")
+        if not self.arm.ready:
+            raise RobotArmError("press 'Snap to home (startup)' first")
+        if not self.session.active:
+            raise RobotArmError("start a session first")
+        deadline = time.monotonic() + 5.0
+        while True:  # let a slider move finish so the snapshot is where the arm ended up
+            with self._lock:
+                if not self._busy and not self._pending:
+                    break
+            if time.monotonic() > deadline:
+                raise RobotArmError("arm is still moving; try again")
+            time.sleep(0.05)
+        point = self.session.record(self.commanded())
+        self._play_message = f"Recorded point {point['n']}"
+        return point
+
+    def session_play(self, name: str | None = None) -> None:
+        """Go to each recorded pose in turn, using the arm's own interpolation."""
+        with self._session_lock:
+            if self._playing:
+                raise RobotArmError("already playing")
+            with self._petri_lock:
+                if self._petri_active:
+                    raise RobotArmError("the Petri path is running")
+            if not self.arm.ready:
+                raise RobotArmError("press 'Snap to home (startup)' first")
+            files = self.session.files()
+            name = name or (self.session.file.name if self.session.file else (files[0] if files else None))
+            if name is None:
+                raise RobotArmError("no recorded session to play")
+            points = self.session.load(name)
+            if not points:
+                raise RobotArmError(f"{name} has no recorded points")
+            for p in points:
+                for index, deg in enumerate(p["angles"]):
+                    low, high = LIMITS_DEG[index]
+                    if not low <= deg <= high:
+                        raise ValueError(f"{name} point {p['n']}: joint {index} angle {deg:.1f} outside {low:g}..{high:g}")
+            with self._lock:
+                if self._busy or self._pending:
+                    raise RobotArmError("wait for the current arm command to finish")
+            self._playing = True
+            self._play_stop.clear()
+            self._play_index = 0
+            self._play_points = points
+            self._play_message = f"Playing {name} ({len(points)} point(s))"
+            threading.Thread(target=self._run_playback, args=(name, points), daemon=True).start()
+
+    def session_stop(self) -> None:
+        """Stop after the move in progress finishes."""
+        self._play_stop.set()
+
+    def _run_playback(self, name: str, points: list[dict]) -> None:
+        try:
+            for i, p in enumerate(points, start=1):
+                if self._play_stop.is_set():
+                    self._play_message = f"Stopped at point {i - 1} of {len(points)}"
+                    break
+                self._play_index = i
+                self._play_message = f"Moving to point {p['n']} of {len(points)}"
+                target = list(p["angles"])
+                with self._lock:
+                    self._check_floor(target)
+                    self._pending.clear()
+                    if self.grip_interp or abs(target[5] - self.commanded()[5]) < 1e-9:
+                        self.arm.move_all(target)
+                    else:
+                        self.arm.move_all(target, snap=(5,))
+            else:
+                self._play_message = f"Played {name}: {len(points)} point(s) done"
+        except Exception as exc:  # keep the GUI alive, report why playback stopped
+            logger.exception("session playback stopped")
+            self._play_message = f"Stopped at point {self._play_index} of {len(points)}: {exc}"
+        finally:
+            self._playing = False
+
     def startup(self) -> None:
+        if self._playing:
+            raise RobotArmError("startup is locked while a recorded session is playing")
         with self._petri_lock:
             if self._petri_active:
                 raise RobotArmError("startup is locked while the Petri path is running")
@@ -1164,6 +1311,8 @@ class ArmService:
             self.arm.startup(confirmed=True)
 
     def move(self, angles: dict[int, float]) -> None:
+        if self._playing:
+            raise RobotArmError("manual joint moves are locked while a recorded session is playing")
         with self._petri_lock:
             if self._petri_active:
                 raise RobotArmError("manual joint moves are locked while the Petri path is running")
@@ -1240,6 +1389,8 @@ class ArmService:
         return None if pos is None else pos[2] * 1000.0
 
     def home(self) -> None:
+        if self._playing:
+            raise RobotArmError("home is locked while a recorded session is playing")
         with self._petri_lock:
             if self._petri_active:
                 raise RobotArmError("home is locked while the Petri path is running")
@@ -1406,6 +1557,8 @@ def make_handler(service: ArmService) -> type[BaseHTTPRequestHandler]:
                 self._json(service.status())
             elif self.path == "/api/petri/status":
                 self._json(service.petri_status())
+            elif self.path == "/api/session/status":
+                self._json(service.session_status())
             elif self.path == "/api/petri/bridge":
                 service.petri_bridge_heartbeat()
                 self._json({"ok": True})
@@ -1470,6 +1623,21 @@ def make_handler(service: ArmService) -> type[BaseHTTPRequestHandler]:
                     service.petri_bridge_heartbeat()
                 elif self.path == "/api/petri/event_ack":
                     service.petri_event_ack(int(body["event_seq"]))
+                elif self.path == "/api/session":
+                    action = body.get("action")
+                    if action == "start":
+                        service.session_start()
+                    elif action == "end":
+                        service.session_end()
+                    elif action == "record":
+                        service.session_record()
+                    elif action == "play":
+                        service.session_play(body.get("file") or None)
+                    elif action == "stop":
+                        service.session_stop()
+                    else:
+                        raise ValueError(f"unknown session action: {action}")
+                    result = {"ok": True, "session": service.session_status()}
                 elif self.path == "/api/startup":
                     if not body.get("confirmed"):
                         raise RobotArmError("startup not confirmed")
