@@ -57,7 +57,12 @@ class WebCam:
         self.focus_peak = 0.0
         self.size = (0, 0)
         self.result: dict | None = None
+        self.params: dict = {}  # petri_detect SPEC overrides set from the GUI
+        self.manual_dish: list | None = None  # [x, y, r] px, replaces the auto dish
+        self._cap = None  # frame the last result came from
+        self._n = 0
         self._result_jpeg: bytes | None = None
+        self._annotated = None
         self._raw = None
         self._dish = None
         self._cond = threading.Condition()
@@ -99,15 +104,76 @@ class WebCam:
     def reset_peak(self) -> None:
         self.focus_peak = 0.0
 
+    def spec(self) -> list[dict]:
+        try:
+            det = load_detector()
+        except Exception:  # opencv/numpy missing
+            return []
+        return [
+            {"key": k, "label": v[4], "default": v[0], "min": v[1], "max": v[2], "step": v[3]}
+            for k, v in det.SPEC.items()
+        ]
+
     def capture(self) -> dict:
-        """Run petri detection on the latest frame. Raises ValueError/RuntimeError."""
+        """Grab the latest frame and run petri detection on it. Raises ValueError."""
+        if self._raw is None:
+            raise ValueError("webcam has no frame yet (not connected?)")
+        self._cap = self._raw.copy()
+        res = self.redetect()
+        from robot_arm.vision import vlm
+
+        if vlm.enabled() and res["disks"]:
+            res["vlm"] = "reading"
+            threading.Thread(target=self._read_labels, args=(self._cap, res), daemon=True).start()
+        return res
+
+    def _read_labels(self, frame, res: dict) -> None:
+        """Ask the GPU VLM what each disk says; print to the terminal, show on the GUI image."""
+        from robot_arm.vision import vlm
+
+        mm = res["mm_per_px"]
+        boxes = [(d["x"], d["y"], d["r_mm"] / mm) for d in res["disks"]]
+        print(f"[vlm] capture #{res['n']}: reading {len(boxes)} disk(s)...", flush=True)
+        try:
+            labels = vlm.read_disks(frame, boxes)
+        except Exception as exc:  # keep the GUI alive whatever happens
+            print(f"[vlm] failed: {exc}", flush=True)
+            res["vlm"] = None
+            return
+        for d, label in zip(res["disks"], labels):
+            d["label"] = label
+        print("[vlm] done: " + ", ".join(labels), flush=True)
+        if self.result is not res:  # a newer capture replaced this one
+            return
+        self._draw_labels(res)
+        res["vlm"] = "done"
+        res["rev"] += 1
+
+    def _draw_labels(self, res: dict) -> None:
         import cv2
 
-        frame = self._raw
-        if frame is None:
-            raise ValueError("webcam has no frame yet (not connected?)")
+        img = self._annotated.copy()
+        for d in res["disks"]:
+            label = d.get("label")
+            if not label or label in ("?", "error"):
+                label = label or ""
+                if not label:
+                    continue
+            org = (max(0, int(d["x"]) - 40), max(14, int(d["y"] - d["r_mm"] / res["mm_per_px"]) - 22))
+            cv2.putText(img, label, org, cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 4, cv2.LINE_AA)
+            cv2.putText(img, label, org, cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2, cv2.LINE_AA)
+        ok, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 90])
+        if ok:
+            self._result_jpeg = buf.tobytes()
+
+    def redetect(self) -> dict:
+        """Run detection again on the captured frame with the current params."""
+        import cv2
+
+        if self._cap is None:
+            return self.capture()
         det = load_detector()
-        res = det.analyze(frame.copy())  # ValueError when no dish
+        res = det.analyze(self._cap.copy(), self.params, self.manual_dish)  # ValueError: no dish
         mm = res["mm_per_px"]
         zone_at = {(x, y): (r, clipped) for x, y, r, clipped in res["zones"]}
         disks = []
@@ -124,12 +190,20 @@ class WebCam:
         if not ok:
             raise ValueError("could not encode result")
         self._result_jpeg = buf.tobytes()
+        self._annotated = res["annotated"]
+        self._n += 1
+        d = res["dish"]
         self.result = {
+            "n": self._n,
             "time": time.strftime("%H:%M:%S"),
-            "dish_r_mm": float(res["dish"][2] * mm),
+            "dish_r_mm": float(d[2] * mm),
+            "dish": [float(d[0]), float(d[1]), float(d[2])],
+            "frame": [int(self._cap.shape[1]), int(self._cap.shape[0])],
             "mm_per_px": float(mm),
             "disks": disks,
             "focus": self.focus,
+            "vlm": None,  # None = off, "reading", "done"
+            "rev": 0,  # bumps when the image/labels change, so the GUI reloads
         }
         return self.result
 
@@ -185,7 +259,7 @@ class WebCam:
                     n += 1
                     if n % 3 == 1:
                         try:
-                            self._dish = load_detector().detect_dish(gray, w)
+                            self._dish = self.manual_dish or load_detector().find_dish(frame, self.params)
                         except Exception:
                             self._dish = None
                     if self._dish is not None:

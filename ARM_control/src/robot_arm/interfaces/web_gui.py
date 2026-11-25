@@ -51,146 +51,181 @@ GRIPPER_MAX_WIDTH_M = 0.035
 LIMITS_DEG = [(0.0, 180.0)] * 5 + [(GRIPPER_OPEN_DEG, GRIPPER_CLOSED_DEG)]
 FALLBACK_TCP = [0.010023, -0.125002, 0.0015]
 
-PAGE = """<!doctype html><html><head><meta charset="utf-8">
+PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
 <title>Robot Arm</title><style>
-:root{color-scheme:dark;--bg:#12151a;--panel:#1a1e25;--well:#0f1217;--line:#272d37;--line2:#363d4a;--tx:#e8eaee;--tx2:#c3c9d4;--mut:#8b93a3;--acc:#4da3ff;--acc-bg:#2f6fd6;--warn:#e0902f;--bad:#ff7b72;--ok:#5fd68a;--r:8px}
+:root{color-scheme:light;
+--bench:#eaeee9;--panel:#fafbf8;--well:#e1e7e0;--line:#d0d8cf;--line2:#aab6ab;
+--tx:#13201c;--tx2:#34433c;--mut:#566860;
+--acc:#0a6b60;--acc-hi:#07554c;--acc-bg:#0a6b60;--acc-tint:#0a6b6018;
+--warn:#9a5206;--warn-hi:#7f4204;--bad:#b3261e;--ok:#1a7541;
+--stage:#0d1815;--stage-line:#1c2d28;
+--r:10px;--rc:6px;--ease:cubic-bezier(.16,1,.3,1)}
 *{box-sizing:border-box}
-html{scrollbar-color:#3a4150 transparent;scrollbar-width:thin}
-body{font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--tx);margin:0;padding:0 16px 32px;accent-color:var(--acc)}
-::selection{background:#2f6fd699}
+html{scrollbar-color:#a3b0a5 transparent;scrollbar-width:thin}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#a3b0a5;border-radius:99px;border:2px solid var(--bench)}
+body{font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;background:var(--bench);color:var(--tx);margin:0;padding:0 20px 40px;accent-color:var(--acc);caret-color:var(--acc);font-variant-numeric:tabular-nums}
+::selection{background:#0a6b6040}
 :focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:4px}
 small,.muted{color:var(--mut)}
-#mode{font-size:11px;font-weight:600;color:var(--warn);background:#e0902f1f;border:1px solid #e0902f55;border-radius:99px;padding:1px 9px}
-#mode:empty{display:none}
-#msg{display:none;margin-top:8px;padding:7px 11px;border-radius:6px;font-size:13px;color:#ffd7d3;background:#ff7b7220;border:1px solid #ff7b7255}
-#msg:not(:empty){display:block}
-.grp{display:flex;gap:6px 12px;align-items:center;flex-wrap:wrap;padding:4px 8px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
-.grp label{font-size:13px;color:var(--tx2);white-space:nowrap;display:inline-flex;align-items:center;gap:6px;cursor:pointer}
-.grp input[type=checkbox],.form input[type=checkbox]{width:15px;height:15px;margin:0}
-#tcpz{font-variant-numeric:tabular-nums;font-size:13px;min-width:92px}
-#grid{display:grid;grid-template-columns:minmax(380px,6fr) minmax(380px,5fr);gap:16px;align-items:start}
-@media(max-width:900px){#grid{grid-template-columns:1fr}}
-.col{display:flex;flex-direction:column;gap:16px;min-width:0}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
-.card .card{background:var(--well)}
-.card>summary{list-style:none;cursor:pointer;padding:11px 14px;font-weight:600;font-size:14px;display:flex;align-items:baseline;gap:8px;border-radius:var(--r);user-select:none}
-.card>summary:hover{background:#ffffff08}
-.card>summary::-webkit-details-marker{display:none}
-.card>summary::before{content:"";flex:none;align-self:center;width:6px;height:6px;border-right:1.5px solid var(--mut);border-bottom:1.5px solid var(--mut);transform:rotate(45deg) translate(-2px,-2px);transition:transform .2s cubic-bezier(.16,1,.3,1)}
-.card:not([open])>summary::before{transform:rotate(-45deg)}
-.card>summary small{font-weight:400;font-size:12px}
-.body{padding:2px 14px 14px}
-.joint{padding:10px 0 12px;border-top:1px solid var(--line)}
-.joint:first-child{border-top:0;padding-top:2px}
-.jh{display:flex;justify-content:space-between;align-items:baseline;gap:4px 12px;flex-wrap:wrap;font-size:13px;margin-bottom:2px}
-.jh b{font-size:14px}
-.jctl{display:flex;align-items:center;gap:6px}
-.jctl input[type=range]{flex:1;min-width:0;height:32px;cursor:pointer}
-button{padding:7px 13px;border:1px solid transparent;border-radius:6px;background:var(--acc-bg);color:#fff;font:inherit;font-size:13px;font-weight:550;cursor:pointer;transition:background-color .15s,transform .1s}
-button:hover:not(:disabled){background:#3b7de6}
-button:active:not(:disabled){transform:translateY(1px)}
-button.mini{padding:4px 9px;min-width:34px;background:#2b313c;color:var(--tx2);font-weight:500}
-button.mini:hover:not(:disabled){background:#38404d;color:#fff}
-button.gray{background:#2b313c;color:var(--tx2)}
-button.gray:hover:not(:disabled){background:#38404d;color:#fff}
-button.warn{background:#c47a22}
-button.warn:hover:not(:disabled){background:#d98a2c}
-button:disabled{opacity:.4;cursor:not-allowed}
-.val{font-variant-numeric:tabular-nums;font-weight:600}
-input[type=number],select{background:var(--well);color:var(--tx);border:1px solid var(--line2);border-radius:6px;padding:5px 7px;font:inherit;font-size:13px}
-input[type=number]:hover,select:hover{border-color:#4a5262}
-input[type=number]{width:74px;font-variant-numeric:tabular-nums}
-canvas{width:100%;height:440px;background:var(--well);border:1px solid var(--line);border-radius:var(--r);touch-action:none;cursor:grab;display:block}
-canvas:active{cursor:grabbing}
-.legend{font-size:12px;margin-top:8px}
-.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 5px 0 12px;vertical-align:-1px}
-.legend i:first-child{margin-left:0}
-.form{display:flex;gap:8px 10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
-pre{background:var(--well);border:1px solid var(--line);border-radius:6px;padding:10px;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;margin:10px 0 0;color:var(--tx2)}
-table{border-collapse:collapse;font-variant-numeric:tabular-nums} td{padding:5px 10px 5px 0;border-bottom:1px solid var(--line)}
-#ik .form+.muted{font-variant-numeric:tabular-nums}
-@media(prefers-reduced-motion:reduce){*{transition:none!important}}
-#top{position:sticky;top:0;z-index:10;background:#12151aee;backdrop-filter:blur(8px);border-bottom:1px solid var(--line);margin-bottom:16px;padding-top:10px}
-#top .line{display:flex;gap:10px 20px;align-items:center;flex-wrap:wrap}
-#top h1{font-size:16px;font-weight:650;margin:0;white-space:nowrap;display:flex;align-items:center;gap:10px}
-#tabs{display:flex;gap:2px;margin-bottom:-1px}
-#tabs button{background:none;color:var(--mut);border:0;border-bottom:2px solid transparent;border-radius:0;padding:8px 14px;font-size:14px}
+a{color:var(--acc);text-underline-offset:3px}
+b{font-weight:650}
+
+/* app bar */
+#top{position:sticky;top:0;z-index:10;margin:0 -20px 18px;padding:0 20px;background:#eaeee9f2;backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+#top .line{display:flex;gap:8px 24px;align-items:center;flex-wrap:wrap;min-height:52px}
+#top h1{font-size:17px;font-weight:700;letter-spacing:-.01em;margin:0;white-space:nowrap;display:flex;align-items:center;gap:10px}
+#top h1 svg{flex:none;color:var(--acc)}
+#tabs{display:flex;gap:4px;align-self:stretch;margin-left:4px}
+#tabs button{background:none;color:var(--mut);border:0;border-bottom:2px solid transparent;border-radius:0;padding:0 12px;font-size:14px;font-weight:550;margin-bottom:-1px}
 #tabs button:hover{color:var(--tx);background:none}
 #tabs button[aria-selected=true]{color:var(--tx);border-bottom-color:var(--acc)}
-#tools{display:flex;gap:8px 10px;flex-wrap:wrap;padding:10px 0}
-.grp .gl{font-size:12px;font-weight:600;color:var(--mut);margin-right:2px}
-.view{position:sticky;top:calc(var(--barh,120px) + 16px)}
+#status{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--tx2);background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:3px 11px 3px 9px;white-space:nowrap}
+.chip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--line2)}
+.chip.ok::before{background:var(--ok)}
+.chip.wait{color:var(--warn)}
+.chip.wait::before{background:var(--warn)}
+.chip.sim{color:var(--warn);border-color:#9a520655;background:#9a520612}
+.chip.sim::before{background:var(--warn)}
+#mode:empty{display:none}
+#msg{display:none;margin:0 0 10px;padding:8px 12px;border-radius:var(--rc);font-size:13px;font-weight:500;color:#7a1a14;background:#b3261e14;border:1px solid #b3261e55}
+#msg:not(:empty){display:block}
+
+/* command strip */
+#tools{display:flex;flex-wrap:wrap;gap:10px 32px;padding:4px 0 12px}
+.grp{display:flex;gap:8px 14px;align-items:center;flex-wrap:wrap}
+.grp label{font-size:13px;color:var(--tx2);white-space:nowrap;display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.grp .gl{font-size:13px;font-weight:700;color:var(--tx);margin-right:2px}
+.grp input[type=checkbox],.form input[type=checkbox]{width:16px;height:16px;margin:0}
+#tcpz{font-size:13px;min-width:92px;font-weight:550}
+@media(max-width:900px){#top{position:static}}
+@media(max-width:700px){#status{margin-left:0;width:100%}}
+
+/* layout */
+#grid{display:grid;grid-template-columns:minmax(380px,6fr) minmax(380px,5fr);gap:20px;align-items:start}
+@media(max-width:900px){#grid{grid-template-columns:1fr}}
+.col{display:flex;flex-direction:column;gap:20px;min-width:0}
+.view{position:sticky;top:calc(var(--barh,120px) + 18px)}
 @media(max-width:900px){.view{position:static}}
-.seg{display:inline-flex;background:var(--well);border:1px solid var(--line);border-radius:8px;padding:2px;margin:0 0 10px}
-.seg button{background:none;color:var(--mut);padding:5px 14px;border-radius:6px}
-.seg button:hover:not(:disabled){background:#ffffff0a;color:var(--tx)}
-.seg button[aria-pressed=true]{background:#2b313c;color:var(--tx)}
-.sec{font-size:12px;font-weight:600;color:var(--mut);margin:14px 0 2px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.card .card{background:var(--well);border-color:transparent}
+.card>summary{list-style:none;cursor:pointer;padding:14px 18px 12px;font-weight:700;font-size:15px;letter-spacing:-.005em;display:flex;align-items:baseline;gap:10px;border-radius:var(--r);user-select:none}
+.card>summary:hover{background:#0a6b600a}
+.card>summary::-webkit-details-marker{display:none}
+.card>summary::before{content:"";flex:none;align-self:center;width:6px;height:6px;border-right:2px solid var(--mut);border-bottom:2px solid var(--mut);transform:rotate(45deg) translate(-2px,-2px);transition:transform .25s var(--ease)}
+.card:not([open])>summary::before{transform:rotate(-45deg)}
+.card>summary small{font-weight:400;font-size:12.5px}
+.body{padding:2px 18px 18px}
+
+/* controls */
+button{padding:8px 14px;border:1px solid transparent;border-radius:var(--rc);background:var(--acc-bg);color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s,transform .1s}
+button:hover:not(:disabled){background:var(--acc-hi)}
+button:active:not(:disabled){transform:translateY(1px)}
+button.gray,button.mini{background:var(--panel);color:var(--tx);border-color:var(--line2)}
+button.gray:hover:not(:disabled),button.mini:hover:not(:disabled){background:#fff;border-color:var(--acc);color:var(--acc-hi)}
+button.mini{padding:4px 9px;min-width:34px;font-weight:550;font-size:12.5px}
+button.mini.on{background:var(--warn);border-color:var(--warn);color:#fff}
+button.warn{background:var(--warn)}
+button.warn:hover:not(:disabled){background:var(--warn-hi)}
+button:disabled{opacity:.42;cursor:not-allowed}
+.val{font-weight:650}
+input[type=number],select{background:#fff;color:var(--tx);border:1px solid var(--line2);border-radius:var(--rc);padding:6px 8px;font:inherit;font-size:13px}
+input[type=number]:hover,select:hover{border-color:var(--acc)}
+input[type=number]{width:74px}
+input:disabled{opacity:.5;cursor:not-allowed}
+input[type=range]{accent-color:var(--acc)}
+.sec{font-size:13px;font-weight:700;color:var(--tx);margin:20px 0 4px}
 .sec:first-child{margin-top:2px}
-.jrow{display:grid;grid-template-columns:128px minmax(0,1fr) 112px 52px;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.jrow{display:grid;grid-template-columns:132px minmax(0,1fr) 112px 54px;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
 .jrow.hd{border-top:0;padding:0 0 2px;font-size:12px;color:var(--mut)}
 .sec+.jrow{border-top:0}
 .jl{display:flex;flex-direction:column;line-height:1.3;min-width:0}
-.jn{font-size:12px;font-variant-numeric:tabular-nums}
+.jn{font-size:12px}
 .jrow .sl{width:100%;height:28px;cursor:pointer;margin:0}
 .vc{display:flex;align-items:center;gap:4px}
-.vc .unit{font-size:12px;color:var(--mut);min-width:20px}
-.vin{width:78px!important;text-align:right}
+.vc .unit{font-size:12px;color:var(--mut);min-width:22px}
+.vin{width:80px!important;text-align:right}
 .vin:disabled,.sl:disabled{opacity:.4;cursor:not-allowed}
-.sw{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--tx2);padding:4px 0 8px;cursor:pointer}
-details.sub{margin-top:10px;border-top:1px solid var(--line)}
-details.sub>summary{cursor:pointer;padding:10px 0 4px;font-size:12px;font-weight:600;color:var(--mut);list-style:none}
+.sw{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--tx2);padding:6px 0 8px;cursor:pointer}
+details.sub{margin-top:14px;border-top:1px solid var(--line)}
+details.sub>summary{cursor:pointer;padding:12px 0 4px;font-size:13px;font-weight:600;color:var(--tx2);list-style:none}
 details.sub>summary::-webkit-details-marker{display:none}
-details.sub>summary::before{content:"+ ";font-family:ui-monospace,monospace}
-details.sub[open]>summary::before{content:"\\2212 "}
-@media(max-width:560px){.jrow.hd{display:none}.jrow{grid-template-columns:minmax(0,1fr) 112px}.jrow .sl{grid-column:1/-1;order:3}.jrow button{display:none}}
-#camline{font-size:12px;margin-top:8px;font-variant-numeric:tabular-nums}
-.camhead{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;margin-bottom:8px;font-size:13px}
+details.sub>summary::before{content:"+";display:inline-block;width:14px;color:var(--acc);font-weight:700}
+details.sub[open]>summary::before{content:"-"}
+.form{display:flex;gap:8px 10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+#ik .form+.muted{font-size:12.5px}
+.ikbtns{display:flex;gap:8px;flex-wrap:wrap}
+pre{background:var(--well);border:1px solid var(--line);border-radius:var(--rc);padding:12px;font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;margin:12px 0 0;color:var(--tx2)}
+table{border-collapse:collapse} td{padding:5px 10px 5px 0;border-bottom:1px solid var(--line)}
+
+/* viewport */
+.seg{display:inline-flex;background:var(--well);border-radius:8px;padding:3px;margin:0 0 12px}
+.seg button{background:none;color:var(--mut);padding:5px 14px;border-radius:6px;border:0}
+.seg button:hover:not(:disabled){background:#fff8;color:var(--tx)}
+.seg button[aria-pressed=true]{background:#fff;color:var(--tx);box-shadow:0 1px 2px #13201c26}
+canvas{width:100%;height:460px;background:var(--stage);border:1px solid var(--stage-line);border-radius:8px;touch-action:none;cursor:grab;display:block}
+canvas:active{cursor:grabbing}
+.legend{font-size:12.5px;margin-top:10px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin:0 6px 0 14px;vertical-align:-1px}
+.legend i:first-child{margin-left:0}
+@media(max-width:560px){.jrow.hd{display:none}.jrow{grid-template-columns:minmax(0,1fr) 112px}.jrow .sl{grid-column:1/-1;order:3}.jrow button{display:none}canvas{height:340px}}
+
+/* cameras */
+#camline{font-size:12.5px;margin-top:8px}
+.camhead{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;margin-bottom:10px;font-size:13px}
+.camimg{width:100%;object-fit:contain;background:#000;border-radius:8px;display:block}
+.meter{height:10px;background:var(--well);border-radius:5px;overflow:hidden;margin-top:8px}
 #wc_bar{height:100%;width:0;background:var(--ok);transition:width .15s}
 #wc_res td{padding:3px 10px 3px 0}
+.wcrow{display:flex;gap:18px;flex-wrap:wrap}
+.wcrow>div{flex:1 1 360px}
+.btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style></head><body>
 <header id="top">
  <div class="line">
-  <h1>Robot Arm <span id="mode"></span></h1>
-  <nav id="tabs" role="tablist"><button id="tabbtn_arm" role="tab" aria-selected="true">Arm</button><button id="tabbtn_cam" role="tab" aria-selected="false">Webcam</button></nav>
+  <h1><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="19" r="2"/><circle cx="10" cy="8" r="2"/><circle cx="19" cy="5" r="2"/><path d="M6 17.2 9 9.8M11.8 7.4 17.2 5.6M19 7.5v4M17 11.5h4"/></svg>Robot Arm</h1>
+  <nav id="tabs" role="tablist" aria-label="Sections"><button id="tabbtn_arm" role="tab" aria-selected="true">Arm</button><button id="tabbtn_cam" role="tab" aria-selected="false">Webcam</button></nav>
+  <div id="status"><span class="chip" id="rdy">Connecting</span><span id="mode" class="chip sim"></span></div>
  </div>
  <div id="tools">
   <div class="grp"><span class="gl">Pose</span><button class="warn" id="start" title="Drive every joint to the saved home pose">Snap to home (startup)</button>
-   <button id="home">Go home</button><button class="gray" id="reset" title="Reset sliders to the commanded pose">Sync sliders</button>
+   <button id="home" title="Move every joint to the saved home pose">Go home</button><button class="gray" id="reset" title="Reset sliders to the commanded pose">Sync sliders</button>
    <button class="gray" id="sethome" title="Save the current pose to configs/home.txt">Save pose as home</button></div>
-  <div class="grp"><span class="gl">Motion</span><label><input type="checkbox" id="live" checked> Live drag</label>
+  <div class="grp"><span class="gl">Motion</span><label><input type="checkbox" id="live" checked> Move while dragging</label>
    <label>Soften <input type="number" id="soften" min="0" value="" placeholder="yaml"> ms/deg</label>
    <button class="gray" id="setsoft">Set</button></div>
-  <div class="grp"><span class="gl">Safety</span><label><input type="checkbox" id="flooron" checked> Z floor guard</label>
-   <label>Floor <input type="number" id="floormm" step="1" value="5" style="width:60px"> mm</label>
-   <span id="tcpz" class="muted">TCP z -</span>
-   <label><input type="checkbox" id="levelon"> Keep gripper level</label>
-   <label>J4 roll <input type="number" id="levelroll" step="1" min="0" max="180" value="28" style="width:60px">&deg;</label></div>
+  <div class="grp"><span class="gl">Safety</span><label><input type="checkbox" id="flooron" checked> Floor guard</label>
+   <label>Floor <input type="number" id="floormm" step="1" value="5" style="width:64px"> mm</label>
+   <span id="tcpz" class="muted">TCP z -</span></div>
+  <div class="grp"><span class="gl">Wrist</span><label><input type="checkbox" id="levelon"> Keep gripper level</label>
+   <label>J4 roll <input type="number" id="levelroll" step="1" min="0" max="180" value="28" style="width:64px">&deg;</label></div>
  </div>
  <div id="msg" role="alert"></div>
 </header>
 <div id="tab_arm">
 <div id="grid">
  <div class="col">
-  <details class="card" open><summary>Controls <small>commanded angles, not measured (no position feedback)</small></summary>
-   <div class="body"><div id="joints"></div><div class="muted" style="font-size:12px;margin-top:10px" id="homeinfo"></div></div></details>
+  <details class="card" open><summary>Joints <small>commanded angles, not measured (no position feedback)</small></summary>
+   <div class="body"><div id="joints"></div><div class="muted" style="font-size:12.5px;margin-top:12px" id="homeinfo"></div></div></details>
   <details class="card" id="ik" open><summary>Inverse kinematics <small id="ikstat"></small></summary><div class="body">
-   <div class="form"><select id="ikmode"><option value="abs">absolute TCP (x, y, z mm, base_link)</option><option value="rel">relative to current TCP (dx, dy, dz mm)</option><option value="cyl_rel">relative cylindrical (dr mm, d&theta; deg, dz mm)</option><option value="cyl_abs">absolute cylindrical (r mm, &theta; deg, z mm)</option></select>
-    <span id="lx">x</span> <input type="number" step="1" id="ikx" value="0"> <span id="ly">y</span> <input type="number" step="1" id="iky" value="0"> <span id="lz">z</span> <input type="number" step="1" id="ikz" value="0">
-    <label><input type="checkbox" id="ikhold"> hold tool direction</label></div>
-   <div class="muted" style="font-size:12px;margin:2px 0 8px" id="tcpnow">TCP now: -</div>
-   <button class="gray" id="ikfill">Fill from current TCP</button>
+   <div class="form"><select id="ikmode" aria-label="Target type"><option value="abs">absolute TCP (x, y, z mm, base_link)</option><option value="rel">relative to current TCP (dx, dy, dz mm)</option><option value="cyl_rel">relative cylindrical (dr mm, d&theta; deg, dz mm)</option><option value="cyl_abs">absolute cylindrical (r mm, &theta; deg, z mm)</option></select>
+    <span id="lx">x</span> <input type="number" step="1" id="ikx" value="0" aria-labelledby="lx"> <span id="ly">y</span> <input type="number" step="1" id="iky" value="0" aria-labelledby="ly"> <span id="lz">z</span> <input type="number" step="1" id="ikz" value="0" aria-labelledby="lz">
+    <label class="muted" style="display:inline-flex;align-items:center;gap:6px"><input type="checkbox" id="ikhold"> hold tool direction</label></div>
+   <div class="muted" style="margin:2px 0 10px" id="tcpnow">TCP now: -</div>
+   <div class="ikbtns"><button class="gray" id="ikfill">Fill from current TCP</button>
    <button id="iksolve">Preview solution</button>
-   <button class="warn" id="ikgo" disabled>Move arm to solution</button>
+   <button class="warn" id="ikgo" disabled>Move arm to solution</button></div>
    <pre id="ikout">TCP = estimated closed-fingertip midpoint. Solving never moves the arm.</pre>
   </div></details>
  </div>
  <div class="col view">
-  <div class="card"><div class="body" style="padding-top:12px">
+  <div class="card"><div class="body" style="padding-top:16px">
    <div class="seg" role="group" aria-label="Right panel"><button id="vbtn_model" aria-pressed="true">3D model</button><button id="vbtn_cam" aria-pressed="false">ESP32 camera</button></div>
    <div id="view_model">
-    <canvas id="cv"></canvas>
+    <canvas id="cv" aria-label="3D model of the arm. Drag to rotate, scroll to zoom."></canvas>
     <div class="legend muted"><i style="background:#4da3ff"></i>commanded <i style="background:#ffc850"></i>slider target <i style="background:#50e678"></i>IK solution
      &nbsp;&middot; drag to rotate, wheel to zoom</div>
     <div class="legend muted">q = sign &times; (servo&deg; &minus; zero) from arm_ik_v2.py. Gripper: 167.5&deg; closed, 10&deg; open (3.5 cm).</div>
@@ -202,21 +237,27 @@ details.sub[open]>summary::before{content:"\\2212 "}
 </div>
 <div id="tab_cam" style="display:none">
  <details class="card" open><summary>Webcam <small id="wc_stat"></small></summary><div class="body">
-  <div style="display:flex;gap:12px;flex-wrap:wrap">
-   <div style="flex:1 1 360px">
-    <img id="wc_img" style="width:100%;max-height:480px;object-fit:contain;background:#000;border-radius:6px">
-    <div style="height:10px;background:#2b313c;border-radius:5px;overflow:hidden;margin-top:6px"><div id="wc_bar"></div></div>
-    <div class="muted" style="font-size:12px;margin:4px 0 8px">Focus <b id="wc_focus">-</b> (peak <b id="wc_peak">-</b>). Turn the focus ring until the bar stops rising.</div>
-    <button id="wc_cap">Capture and detect</button>
-    <button class="gray" id="wc_rot">Rotate 90</button>
+  <div class="wcrow">
+   <div>
+    <img id="wc_img" class="camimg" style="max-height:480px" alt="Webcam live view">
+    <div class="meter"><div id="wc_bar"></div></div>
+    <div class="muted" style="font-size:12.5px;margin:6px 0 12px">Focus <b id="wc_focus">-</b> (peak <b id="wc_peak">-</b>). Turn the focus ring until the bar stops rising.</div>
+    <div class="btns"><button id="wc_cap">Capture and detect</button>
+    <button class="gray" id="wc_rot">Rotate 90&deg;</button>
     <button class="gray" id="wc_reset">Reset focus peak</button>
-    <label><input type="checkbox" id="wc_live"> live dish outline</label>
+    <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--tx2)"><input type="checkbox" id="wc_live"> Live dish outline</label></div>
    </div>
-   <div style="flex:1 1 360px">
-    <img id="wc_resimg" style="width:100%;max-height:480px;object-fit:contain;background:#000;border-radius:6px;display:none">
-    <div id="wc_resinfo" class="muted" style="font-size:13px;margin-top:6px">No capture yet. Blue = dish, red = disk, purple = zone.</div>
+   <div>
+    <img id="wc_resimg" class="camimg" style="max-height:480px;display:none" alt="Annotated capture">
+    <div id="wc_resinfo" class="muted" style="font-size:13px;margin-top:8px">No capture yet. Blue = dish, red = disk, purple = zone.</div>
     <table id="wc_res" style="font-size:13px"></table>
-    <a id="wc_dl" href="/webcam_result.jpg" download="petri_result.jpg" style="display:none;color:var(--acc)">download annotated image</a>
+    <details class="card" open style="margin-top:10px"><summary>Detection tuning <small>re-runs on the captured frame</small></summary><div class="body">
+     <label><input type="checkbox" id="wc_manual"> manual dish circle</label>
+     <div id="wc_mdish" style="display:none"></div>
+     <div id="wc_params"></div>
+     <button class="gray" id="wc_defaults">Reset to defaults</button>
+    </div></details>
+    <a id="wc_dl" href="/webcam_result.jpg" download="petri_result.jpg" style="display:none">Download annotated image</a>
    </div>
   </div>
  </div></details>
@@ -309,6 +350,7 @@ async function refresh(){
   try{
     const s=await api('/api/status'); const first=!state; state=s;
     $('start').style.display=s.ready?'none':'';
+    const rd=$('rdy');rd.textContent=s.busy?'Moving':s.ready?'Ready':'Awaiting startup';rd.className='chip '+(s.ready?'ok':'wait');
     if(first||s.home_version!==homeVersion){homeVersion=s.home_version;build(s)}
     s.joints.forEach(j=>{$('c'+j.index).textContent=j.commanded_deg.toFixed(1);$('q'+j.index).textContent=(j.index===5?openFrac(j.commanded_deg)*model_w()*1000:qOf(j.index,j.commanded_deg)).toFixed(1)});
     $('homeinfo').textContent='home (servo deg): ['+s.joints.map(j=>j.home_deg.toFixed(1)).join(', ')+']  '+s.home_source;
@@ -322,7 +364,7 @@ async function refresh(){
     const tz=$('tcpz');
     if(!s.guard_available){tz.textContent='z guard unavailable (no IK/numpy)';tz.style.color='var(--bad)'}
     else if(s.tcp_z_mm!==null){tz.textContent='TCP z '+s.tcp_z_mm.toFixed(1)+' mm';tz.style.color=s.tcp_z_mm<s.floor_mm?'var(--bad)':''}
-  }catch(e){msg('connection lost')}
+  }catch(e){msg('Connection lost. Is the server still running?');$('rdy').textContent='Offline';$('rdy').className='chip'}
 }
 let homeVersion=-1;
 $('start').onclick=async()=>{
@@ -380,7 +422,7 @@ function draw(){
   const sc=Math.min(w,h)/0.55*zoom,ctr=[0,-0.1,0.12];
   const P=p=>proj(p,sc,w,h,ctr);
   const line=(a,b,col,wd)=>{const A=P(a),B=P(b);cx.strokeStyle=col;cx.lineWidth=wd;cx.beginPath();cx.moveTo(A[0],A[1]);cx.lineTo(B[0],B[1]);cx.stroke()};
-  for(let i=-5;i<=5;i++){const v=i*0.05;line([v,-0.35,0],[v,0.15,0],'#1d222b',1);line([-0.25,v-0.1,0],[0.25,v-0.1,0],'#1d222b',1)}
+  for(let i=-5;i<=5;i++){const v=i*0.05;line([v,-0.35,0],[v,0.15,0],'#1b2c27',1);line([-0.25,v-0.1,0],[0.25,v-0.1,0],'#1b2c27',1)}
   line([0,0,0],[0.06,0,0],'#e55',2);line([0,0,0],[0,0.06,0],'#5e5',2);line([0,0,0],[0,0,0.06],'#58f',2);
   const cur=state.joints.map(j=>j.commanded_deg),tgt=sliders.map(s=>+s.value);
   const poses=[[tgt,0],[ikPrev,1],[cur,2]];
@@ -401,7 +443,7 @@ function draw(){
         if(i>0&&i<6){const ax=model.joints[i-1].axis,o=pt(f);line(o,pt(f,ax.map(v=>v*0.03)),'#7f7',2)}});
     }
   });
-  cx.fillStyle='#ccc';cx.font='12px monospace';
+  cx.fillStyle='#b6c6bf';cx.font='12px ui-monospace,monospace';
   cx.fillText(`TCP (base_link): x ${(curTcp[0]*1000).toFixed(1)} y ${(curTcp[1]*1000).toFixed(1)} z ${(curTcp[2]*1000).toFixed(1)} mm`,10,18);
 }
 let drag=null;
@@ -438,7 +480,7 @@ $('ikgo').onclick=async()=>{
   const r=await api('/api/move',{angles:a});
   if(!r.error){for(let i=0;i<5;i++)setSlider(i,ikPrev[i]);ikPrev=null;$('ikgo').disabled=true}};
 api('/api/model').then(m=>{model=m;$('ikstat').textContent=m.ik_ok?'(arm_ik_v2.py loaded)':'(IK unavailable: '+m.ik_error+')';$('iksolve').disabled=!m.ik_ok});
-$('mode').textContent=SIMULATION_ONLY?'SIMULATION ONLY · motors disabled':'';
+$('mode').textContent=SIMULATION_ONLY?'Simulation only, motors disabled':'';
 if(SIMULATION_ONLY){$('start').style.display='none';$('start').disabled=true}
 refresh();setInterval(refresh,300);
 const CAMS=[['esp','ESP32-CAM']];
@@ -518,7 +560,7 @@ function camTick(){
     lb.onpointerdown=()=>{ld=true};lb.onpointerup=()=>{ld=false};window.lbDrag=()=>ld}
   if(!camVisible())return;
   syncOpts(k,c);
-  const on=!!c.light;$('light').textContent='Light: '+(on?'on':'off');$('light').style.background=on?'#c4951f':'';
+  const on=!!c.light;$('light').textContent='Light: '+(on?'on':'off');$('light').classList.toggle('on',on);
   if(c.brightness!=null&&!(window.lbDrag&&window.lbDrag())){$('lbr').value=c.brightness;$('lbrv').textContent=Math.round(c.brightness)+'%'}
   $('cs_esp').textContent=c.connected?`${c.port||'auto'}, ${c.fps.toFixed(1)} fps`+(c.bytes===0?' - nothing received':(c.fps===0?' - no valid frames':'')):'Not connected: '+(c.error||'waiting');
   const t=c.stats;
@@ -570,13 +612,41 @@ function wcTick(){
   $('wc_focus').textContent=w.focus.toFixed(1);$('wc_peak').textContent=w.focus_peak.toFixed(1);
   $('wc_bar').style.width=(w.focus_peak>0?Math.min(100,100*w.focus/w.focus_peak):0)+'%';
   if(document.activeElement!==$('wc_live'))$('wc_live').checked=w.live_dish;
+  if(w.size&&w.size[0])wcMan.frame=w.size;
+  if(w.spec&&w.spec.length&&!$('wc_params').children.length)wcBuild(w);
   const r=w.result;
-  if(r&&r.time!==wcTick.last){wcTick.last=r.time;
+  if(r&&(r.n+':'+r.rev)!==wcTick.last){wcTick.last=r.n+':'+r.rev;
     $('wc_resimg').src='/webcam_result.jpg?t='+Date.now();$('wc_resimg').style.display='';$('wc_dl').style.display='';
-    $('wc_resinfo').textContent=`${r.time}: dish R=${r.dish_r_mm.toFixed(1)} mm (${r.mm_per_px.toFixed(4)} mm/px), ${r.disks.length} disk(s), focus ${r.focus.toFixed(0)}`;
-    $('wc_res').innerHTML='<tr class="muted"><td>disk</td><td>R mm</td><td>zone R mm</td></tr>'+r.disks.map((d,i)=>`<tr><td>#${i+1} (${d.x.toFixed(0)},${d.y.toFixed(0)})</td><td>${d.r_mm.toFixed(1)}</td><td>${d.zone_mm==null?'none':d.zone_mm.toFixed(1)+(d.clipped?' (lower bound)':'')}</td></tr>`).join('')}
+    $('wc_resinfo').textContent=`${r.time}: dish R=${r.dish_r_mm.toFixed(1)} mm (${r.mm_per_px.toFixed(4)} mm/px), ${r.disks.length} disk(s), focus ${r.focus.toFixed(0)}`+(r.vlm==='reading'?' - reading disk labels on the GPU...':'');
+    $('wc_res').innerHTML='<tr class="muted"><td>disk</td><td>R mm</td><td>zone R mm</td><td>label</td></tr>'+r.disks.map((d,i)=>`<tr><td>#${i+1} (${d.x.toFixed(0)},${d.y.toFixed(0)})</td><td>${d.r_mm.toFixed(1)}</td><td>${d.zone_mm==null?'none':d.zone_mm.toFixed(1)+(d.clipped?' (lower bound)':'')}</td><td>${d.label||(r.vlm==='reading'?'...':'')}</td></tr>`).join('')}
 }
 setInterval(wcTick,500);
+let wcT=null;const wcMan={frame:[640,480]};
+function wcSend(extra){clearTimeout(wcT);wcT=setTimeout(async()=>{
+  const params={};document.querySelectorAll('[data-wp]').forEach(e=>params[e.dataset.wp]=+e.value);
+  const body=Object.assign({params},extra||{});
+  if($('wc_manual').checked)body.manual={x:+$('wm_x').value,y:+$('wm_y').value,r:+$('wm_r').value};else body.manual=null;
+  const r=await api('/api/webcam/detect',body);if(r.error)$('wc_resinfo').textContent=r.error},200)}
+function wcSlider(box,id,label,min,max,step,val,attr){
+  const d=document.createElement('div');d.className='jctl';d.style.margin='4px 0';
+  d.innerHTML=`<span style="width:230px;font-size:12px">${label}</span><input type="range" ${attr} id="${id}" min="${min}" max="${max}" step="${step}" value="${val}"><span class="val" id="${id}_v">${val}</span>`;
+  box.appendChild(d);const e=d.querySelector('input');
+  e.oninput=()=>{$(id+'_v').textContent=(+e.value).toFixed(step<1?2:0);wcSend()};return e}
+function wcBuild(w){
+  const box=$('wc_params');
+  w.spec.forEach(sp=>{const v=(w.params&&w.params[sp.key]!=null)?w.params[sp.key]:sp.default;wcSlider(box,'wp_'+sp.key,sp.label,sp.min,sp.max,sp.step,v,'data-wp="'+sp.key+'" data-def="'+sp.default+'"')});
+  const m=$('wc_mdish');const f=wcMan.frame;
+  const d=w.result?w.result.dish:[f[0]/2,f[1]/2,Math.min(f[0],f[1])/2];
+  wcSlider(m,'wm_x','dish centre x px',0,f[0],1,Math.round(d[0]),'');
+  wcSlider(m,'wm_y','dish centre y px',0,f[1],1,Math.round(d[1]),'');
+  wcSlider(m,'wm_r','dish radius px',10,Math.max(f[0],f[1]),1,Math.round(d[2]),'');
+}
+$('wc_manual').onchange=()=>{
+  const on=$('wc_manual').checked;$('wc_mdish').style.display=on?'':'none';
+  const r=state&&state.webcam&&state.webcam.result;
+  if(on&&r){[['wm_x',0],['wm_y',1],['wm_r',2]].forEach(([id,i])=>{$(id).value=Math.round(r.dish[i]);$(id+'_v').textContent=Math.round(r.dish[i])})}
+  wcSend()};
+$('wc_defaults').onclick=()=>{document.querySelectorAll('[data-wp]').forEach(e=>{e.value=e.dataset.def;$(e.id+'_v').textContent=e.dataset.def});$('wc_manual').checked=false;$('wc_mdish').style.display='none';wcSend()};
 $('wc_cap').onclick=async()=>{const r=await api('/api/webcam/capture',{});if(r.error)$('wc_resinfo').textContent=r.error};
 $('wc_rot').onclick=()=>api('/api/webcam/options',{rotate_step:90});
 $('wc_reset').onclick=()=>api('/api/webcam/options',{reset_peak:true});
@@ -932,6 +1002,9 @@ class ArmService:
                 "rotate": self.webcam.rotate,
                 "error": self.webcam.last_error,
                 "result": self.webcam.result,
+                "params": self.webcam.params,
+                "manual_dish": self.webcam.manual_dish,
+                "spec": self.webcam.spec(),
             },
             "error": error,
         }
@@ -1294,6 +1367,14 @@ def make_handler(service: ArmService) -> type[BaseHTTPRequestHandler]:
                             wc.live_dish = bool(body["live_dish"])
                         if body.get("reset_peak"):
                             wc.reset_peak()
+                    elif self.path == "/api/webcam/detect":
+                        # tuning: set detector params / manual dish, then re-run on the captured frame
+                        if "params" in body:
+                            wc.params = {str(k): float(v) for k, v in body["params"].items()}
+                        if "manual" in body:
+                            m = body["manual"]
+                            wc.manual_dish = None if m is None else [float(m["x"]), float(m["y"]), float(m["r"])]
+                        result = {"ok": True, "result": wc.redetect()}
                     else:
                         return self._json({"error": "not found"}, 404)
                 elif self.path == "/api/floor":

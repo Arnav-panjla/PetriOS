@@ -33,3 +33,19 @@ def test_no_device_does_not_crash():
     cam = WebCam("/dev/nonexistent")
     assert not cam.connected and cam.fps == 0.0
     assert cam.latest() is None
+
+
+def test_params_and_manual_dish():
+    import cv2
+
+    cam = WebCam("/dev/nonexistent")
+    cam._raw = cv2.imread(str(SAMPLE))
+    cam.capture()
+    d = cam.result["dish"]
+    cam.params = {"DISK_MIN_BRIGHTNESS": 250.0}  # nothing passes: no disks
+    assert cam.redetect()["disks"] == []
+    cam.params = {}
+    cam.manual_dish = [d[0], d[1], d[2] * 0.9]
+    r = cam.redetect()
+    assert abs(r["dish"][2] - d[2] * 0.9) < 1e-6 and r["disks"]
+    assert cam.spec()
