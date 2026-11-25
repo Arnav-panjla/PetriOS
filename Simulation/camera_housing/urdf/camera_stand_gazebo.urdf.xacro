@@ -16,7 +16,8 @@
     <collision>
       <origin xyz="0 0 0" rpy="1.57079632679 0 0"/>
       <geometry>
-        <mesh filename="package://camera_housing/meshes/camera_shousing.stl" scale="0.001 0.001 0.001"/>
+        <!-- Gazebo-only collision mesh omits the 180-185 mm roof plate so the Petri dish can pass through it. -->
+        <mesh filename="package://camera_housing/meshes/camera_shousing_no_roof_collision.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
 

@@ -151,11 +151,16 @@ the browser's 3D model follows its commanded servo angles, and the bridge mirror
 those angles into Gazebo. The bridge waits for the arm to settle before attaching
 or releasing the simulated dish. The route opens the gripper at the carousel,
 enters the U slot, grips and lifts the dish, extracts it clear of the carousel,
-travels level to the camera housing, inserts horizontally into the inner U slot,
-releases, retreats, and returns home. Use the speed selector to adjust motion.
+travels level to above the camera housing, lowers vertically through the
+collision-disabled upper plate into the inner U slot, releases, retracts
+vertically, and returns home. The upper plate remains visible in Gazebo but is
+not part of its collision mesh. Use the speed selector to adjust motion.
 The selector now defaults to 3× and offers 4× and 6× for faster simulation;
 hardware mode is capped at 3×. Gazebo mirror commands use a 50 ms duration to
 track the faster GUI updates more closely.
+The carousel and dish have been moved 50 mm radially inward; the camera housing
+has been moved a further 80 mm inward from the previous scene. The dish route
+uses the opening through the collision-disabled upper plate.
 
 With a normal hardware GUI (without `--simulation-only`), the same button sends
 the path's servo angles through the motor controller after the normal startup

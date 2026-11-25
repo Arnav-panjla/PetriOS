@@ -68,16 +68,21 @@ def test_complete_simulation_route_stays_level_and_places_center() -> None:
     placed = [step for step in steps if step.stage == "insert"][-1]
     assert placed.dish_center_m is not None
     assert np.linalg.norm(np.array(placed.dish_center_m) - destination.center_m) < 0.002
+    above = [step for step in steps if step.stage == "approach_camera"][-1]
+    assert above.dish_center_m is not None
+    assert np.linalg.norm(np.array(above.dish_center_m[:2]) - destination.center_m[:2]) < 0.002
+    assert above.dish_center_m[2] > 0.185
     insertion = [step for step in steps if step.stage == "insert"]
     assert insertion
-    assert all(abs(step.dish_center_m[2] - destination.center_m[2]) < 0.002
+    assert all(np.linalg.norm(np.array(step.dish_center_m[:2]) - destination.center_m[:2]) < 0.002
                for step in insertion if step.dish_center_m is not None)
-    outside = [step for step in steps if step.stage == "lower_outside"][-1]
-    assert outside.dish_center_m is not None
-    assert outside.dish_center_m[1] > destination.center_m[1] + destination.inside_m + 0.045
+    assert insertion[0].dish_center_m[2] > 0.185
+    assert insertion[-1].dish_center_m[2] == pytest.approx(destination.center_m[2], abs=0.002)
     released = [step for step in steps if step.stage == "release"][-1]
     cleared = [step for step in steps if step.stage == "clear_dish"][-1]
-    assert cleared.tcp_m[2] == pytest.approx(released.tcp_m[2] - 0.005, abs=0.002)
+    assert cleared.tcp_m[2] == pytest.approx(released.tcp_m[2] + 0.005, abs=0.002)
+    retreat = [step for step in steps if step.stage == "retreat"]
+    assert retreat[-1].tcp_m[2] > 0.185
     for step in steps[:-1]:
         transform, _ = mod.fk(mod.to_q(step.servo_deg[:5]), mod.TCP_ESTIMATE)
         normal = transform[:3, :3] @ DISH_NORMAL_LOCAL

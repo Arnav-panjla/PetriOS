@@ -16,9 +16,10 @@ from scipy.optimize import least_squares
 # Matches the one-slot carousel and camera stand in gazebo_stage2_gui_sync.
 # Hardware fixtures must supply measured coordinates instead.
 SIMULATION_SCENE = {
-    "source": {"center_m": [0.280014, -0.280014, 0.2400],
+    # Both fixtures are shifted 50 mm radially toward the arm from the prior scene.
+    "source": {"center_m": [0.244659, -0.244659, 0.2400],
                "outward_xy": [-0.70710678, 0.70710678], "inside_m": 0.045},
-    "destination": {"center_m": [0.0, -0.490, 0.0925],
+    "destination": {"center_m": [0.0, -0.390, 0.0925],
                     "outward_xy": [0.0, 1.0], "inside_m": 0.080},
 }
 
@@ -194,10 +195,23 @@ def plan_transfer(
             dish = transform[:3, 3] + axis * grasp_offset_m if carrying else None
             append(stage, next_servo, dish=dish)
 
+    def dish_path(stage: str, target_center: np.ndarray,
+                  outward: tuple[float, float]) -> None:
+        """Move a carried dish by its center, including vertical roof pass-through."""
+        transform = _pose(mod, current[:5], tcp)
+        axis = transform[:3, :3] @ mod.TOOL_AXIS_LOCAL
+        dish_start = transform[:3, 3] + axis * grasp_offset_m
+        for dish_point in _sample(dish_start, target_center, spacing_m):
+            solved = _solve_level(mod, dish_point, outward, current[:5], tcp,
+                                  dish_radius_m=grasp_offset_m)
+            transform = _pose(mod, solved, tcp)
+            axis = transform[:3, :3] @ mod.TOOL_AXIS_LOCAL
+            actual_center = transform[:3, 3] + axis * grasp_offset_m
+            append(stage, np.r_[solved, current[5]], dish=actual_center)
+
     source_pre = source.point(approach_m)
     source_grasp = source.point(grasp_offset_m)
     source_out = source.point(grasp_offset_m + source.inside_m + outside_m)
-    destination_out = destination.point(grasp_offset_m + destination.inside_m + outside_m)
 
     pre_solution = _solve_level(mod, source_pre, source.outward_xy, current[:5], tcp)
     append("pregrasp", np.r_[pre_solution, current[5]], level=False)
@@ -216,13 +230,13 @@ def plan_transfer(
               source.outward_xy, carrying=True)
     # Carry above both fixtures. The dish stays level; the arm can change yaw.
     transfer_height = max(source.center_m[2], destination.center_m[2]) + travel_lift_m
-    carry_end = destination_out.copy(); carry_end[2] = transfer_height
+    destination_above = destination.point(0.0, transfer_height - destination.center_m[2])
     # Move farther away from the carousel before turning toward the camera.
     # Using the larger arm-centred radius here points back toward the carousel
     # (whose centre lies beyond the source along the same radial line) and can
     # drive the dish through a vertical divider.
     source_xy = source_out[:2]
-    destination_xy = destination_out[:2]
+    destination_xy = destination.center_m[:2]
     source_radius = float(np.linalg.norm(source_xy))
     destination_radius = float(np.linalg.norm(destination_xy))
     arc_radius = min(source_radius, destination_radius) - 0.025
@@ -247,35 +261,18 @@ def plan_transfer(
         axis = transform[:3, :3] @ mod.TOOL_AXIS_LOCAL
         append("carry_arc", np.r_[solved, current[5]],
                dish=transform[:3, 3] + axis * grasp_offset_m)
-    cartesian("carry_in", carry_end, destination.outward_xy, carrying=True)
-    cartesian("lower_outside", destination_out, destination.outward_xy, carrying=True)
-    # Solve for the *dish center* during insertion. A TCP-only target can place
-    # the dish a few millimetres sideways when the allowed yaw changes.
-    dish_start_transform = _pose(mod, current[:5], tcp)
-    dish_start_axis = dish_start_transform[:3, :3] @ mod.TOOL_AXIS_LOCAL
-    dish_start = dish_start_transform[:3, 3] + dish_start_axis * grasp_offset_m
-    def place_dish_path(stage: str, target_center: np.ndarray) -> None:
-        nonlocal dish_start
-        for dish_point in _sample(dish_start, target_center, spacing_m):
-            solved = _solve_level(mod, dish_point, destination.outward_xy,
-                                  current[:5], tcp, dish_radius_m=grasp_offset_m)
-            transform = _pose(mod, solved, tcp)
-            axis = transform[:3, :3] @ mod.TOOL_AXIS_LOCAL
-            actual_center = transform[:3, 3] + axis * grasp_offset_m
-            append(stage, np.r_[solved, current[5]], dish=actual_center)
-        dish_start = actual_center
-
-    # The camera housing has a roof. Approach through its front opening at the
-    # height of the recessed U shelf, without a vertical move inside it.
-    place_dish_path("insert", destination.point(0))
+    # The dish approaches above the camera, then passes down through the
+    # collision-disabled upper plate into the inner U slot.
+    dish_path("approach_camera", destination_above, destination.outward_xy)
+    dish_path("insert", destination.point(0), destination.outward_xy)
     opened = current.copy(); opened[5] = 10.0
     append("release", opened, event="detach", dish=destination.point(0))
-    # The upper finger needs clearance from the lid before withdrawing. The
-    # lower finger can dip into the open U notch while the wrist stays level.
+    # Clear the dish, then retract vertically back through the upper plate.
     release_tcp = _pose(mod, current[:5], tcp)[:3, 3]
-    clearance_tcp = release_tcp - np.array([0.0, 0.0, release_clearance_m])
+    clearance_tcp = release_tcp + np.array([0.0, 0.0, release_clearance_m])
     cartesian("clear_dish", clearance_tcp, destination.outward_xy)
-    cartesian("retreat", destination_out - np.array([0.0, 0.0, release_clearance_m]),
-              destination.outward_xy)
+    retreat_tcp = release_tcp.copy()
+    retreat_tcp[2] = transfer_height
+    cartesian("retreat", retreat_tcp, destination.outward_xy)
     append("home", home, level=False)
     return steps
