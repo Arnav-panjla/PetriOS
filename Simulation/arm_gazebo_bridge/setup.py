@@ -21,6 +21,7 @@ setup(
         "console_scripts": [
             "gui_to_gazebo = arm_gazebo_bridge.bridge_node:main",
             "validate_kinematics = arm_gazebo_bridge.validate_node:main",
+            "gazebo_direct_petri = arm_gazebo_bridge.direct_transfer:main",
         ],
     },
 )

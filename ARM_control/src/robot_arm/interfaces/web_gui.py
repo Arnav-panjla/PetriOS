@@ -220,6 +220,12 @@ canvas:active{cursor:grabbing}
    <button class="warn" id="ikgo" disabled>Move arm to solution</button></div>
    <pre id="ikout">TCP = estimated closed-fingertip midpoint. Solving never moves the arm.</pre>
   </div></details>
+  <details class="card" id="petri" open><summary>Petri transfer <small>shared arm path</small></summary><div class="body">
+   <p class="muted" style="font-size:13px">Follow the level carousel-to-camera path. The 3D arm model follows its commanded angles; a running Gazebo sync bridge mirrors the same angles. In hardware mode those commands go to the motors.</p>
+   <div class="form"><label>Speed <select id="petri_speed"><option value="1.5">1.5×</option><option value="2.0">2.0×</option><option value="3.0" selected>3.0×</option><option value="4.0">4.0×</option><option value="6.0">6.0×</option></select></label>
+   <button class="warn" id="petri_run" disabled>Follow Petri path</button></div>
+   <pre id="petri_status">Petri path is idle.</pre>
+  </div></details>
  </div>
  <div class="col view">
   <div class="card"><div class="body" style="padding-top:16px">
@@ -271,6 +277,11 @@ const msg=t=>{$('msg').textContent=t||''};
 async function api(path,body){
   const r=await fetch(path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
   const j=await r.json(); if(j.error)msg(j.error); else if(body)msg(''); return j;}
+async function petriRefresh(){const s=await api('/api/petri/status');if(s.error)return;
+  $('petri_run').disabled=!state?.ready||s.active;
+  $('petri_status').textContent=s.message|| (s.active?'Petri transfer is running…':'Petri path is idle.');}
+$('petri_run').onclick=async()=>{const r=await api('/api/petri/run',{speed:+$('petri_speed').value});if(!r.error)petriRefresh()};
+setInterval(petriRefresh,1000);
 const CYL=[['r','r','mm',1],['h','height z','mm',1],['t','theta','deg',0.5],['p','tool pitch','deg',0.5]];
 let cylLast=0,cylTimer=null;
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
@@ -915,6 +926,15 @@ class ArmService:
         self.cameras = cameras or {}
         self.ik = ik
         self.simulation_only = simulation_only
+        self._petri_lock = threading.Lock()
+        self._petri_active = False
+        self._petri_stage = "idle"
+        self._petri_message = "Petri path is idle."
+        self._petri_event_seq = 0
+        self._petri_event_kind: str | None = None
+        self._petri_event_ack = 0
+        self._petri_bridge_seen = 0.0
+        self._petri_mirror_gazebo = False
         self.home_deg = list(home_degrees) if home_degrees is not None else [j.home_deg for j in arm.config.joints]
         self.home_source = "(saved in configs/home.txt)" if saved_home else "(from joints.yaml)"
         self.home_version = 0
@@ -939,6 +959,7 @@ class ArmService:
         return [j.commanded_deg for j in self.arm._joints]
 
     def status(self) -> dict:
+        petri = self.petri_status()
         joints = []
         for joint, home in zip(self.arm._joints, self.home_deg, strict=True):
             cal = joint.servo.calibration
@@ -957,7 +978,7 @@ class ArmService:
         error, self._error = self._error, None
         return {
             "ready": self.arm.ready,
-            "busy": self._busy,
+            "busy": self._busy or petri["active"],
             "soften_ms": self.arm.soften_ms,
             "floor_enabled": self.floor_enabled,
             "floor_mm": self.floor_mm,
@@ -973,6 +994,8 @@ class ArmService:
             "home_source": self.home_source,
             "home_version": self.home_version,
             "simulation_only": self.simulation_only,
+            "petri": petri,
+            "transfer": petri,
             "cameras": {
                 name: {
                     "connected": cam.connected,
@@ -1009,11 +1032,115 @@ class ArmService:
             "error": error,
         }
 
+    def petri_status(self) -> dict:
+        with self._petri_lock:
+            return {
+                "active": self._petri_active,
+                "stage": self._petri_stage,
+                "message": self._petri_message,
+                "event_seq": self._petri_event_seq,
+                "event_kind": self._petri_event_kind,
+            }
+
+    def petri_bridge_heartbeat(self) -> None:
+        with self._petri_lock:
+            self._petri_bridge_seen = time.monotonic()
+
+    def petri_event_ack(self, event_seq: int) -> None:
+        with self._petri_lock:
+            if self._petri_active and event_seq == self._petri_event_seq:
+                self._petri_event_ack = event_seq
+
+    def start_petri_transfer(self, speed: float) -> None:
+        max_speed = 6.0 if self.simulation_only else 3.0
+        if not 0.2 <= speed <= max_speed:
+            raise ValueError(f"speed must be between 0.2 and {max_speed:g} for this mode")
+        with self._petri_lock:
+            if self._petri_active:
+                raise RobotArmError("Petri path is already running")
+            if not self.arm.ready:
+                raise RobotArmError("start the arm before following the Petri path")
+            bridge_connected = time.monotonic() - self._petri_bridge_seen <= 3.0
+            if self.simulation_only and not bridge_connected:
+                raise RobotArmError("Gazebo sync bridge is not connected; launch gazebo_stage2_gui_sync first")
+            with self._lock:
+                if self._busy or self._pending:
+                    raise RobotArmError("wait for the current arm command to finish")
+            self._petri_active = True
+            self._petri_mirror_gazebo = bridge_connected
+            self._petri_stage = "planning"
+            self._petri_message = "Planning level Petri transfer…"
+            threading.Thread(target=self._run_petri_transfer, args=(speed,), daemon=True).start()
+
+    def _run_petri_transfer(self, speed: float) -> None:
+        """Run every planned waypoint through the same arm command path as sliders."""
+        try:
+            from robot_arm.motion.petri_transfer import SIMULATION_SCENE, Station, plan_transfer
+
+            mod = self.ik.mod
+            if mod is None:
+                raise RobotArmError("IK model is unavailable")
+            start = self.commanded()
+            steps = plan_transfer(
+                mod, start, self.home_deg,
+                Station.from_dict(SIMULATION_SCENE["source"]),
+                Station.from_dict(SIMULATION_SCENE["destination"]),
+            )
+            logger.info("Petri path planned: %d waypoints at %.2fx", len(steps), speed)
+            previous = start
+            for index, step in enumerate(steps, start=1):
+                with self._petri_lock:
+                    self._petri_stage = step.stage
+                    self._petri_message = f"{step.stage.replace('_', ' ').title()} ({index}/{len(steps)})"
+                target = list(step.servo_deg)
+                delta = max(abs(a - b) for a, b in zip(previous, target, strict=True))
+                duration = max(0.10 / speed, delta / (0.85 * speed))
+                if step.stage in ("grip", "release"):
+                    duration = max(duration, 0.8 / speed)
+                # This is the existing ArmController interpolation path. Its
+                # live commanded angles drive both the browser model and bridge.
+                self.arm.move_all(target, duration_s=duration)
+                previous = target
+                if step.event and self._petri_mirror_gazebo:
+                    with self._petri_lock:
+                        self._petri_event_seq += 1
+                        event_seq = self._petri_event_seq
+                        self._petri_event_kind = step.event
+                        self._petri_event_ack = 0
+                    deadline = time.monotonic() + 15.0
+                    while time.monotonic() < deadline:
+                        with self._petri_lock:
+                            if self._petri_event_ack == event_seq:
+                                break
+                        time.sleep(0.05)
+                    else:
+                        raise RobotArmError(f"Gazebo did not acknowledge {step.event}; check Gazebo bridge and joint state")
+                    with self._petri_lock:
+                        self._petri_event_kind = None
+            with self._petri_lock:
+                self._petri_stage = "complete"
+                self._petri_message = f"Petri transfer complete ({len(steps)} waypoints)."
+        except Exception as exc:
+            logger.exception("Petri transfer stopped")
+            with self._petri_lock:
+                self._petri_stage = "stopped"
+                self._petri_message = f"Stopped: {exc}"
+                self._petri_event_kind = None
+        finally:
+            with self._petri_lock:
+                self._petri_active = False
+
     def startup(self) -> None:
+        with self._petri_lock:
+            if self._petri_active:
+                raise RobotArmError("startup is locked while the Petri path is running")
         with self._lock:
             self.arm.startup(confirmed=True)
 
     def move(self, angles: dict[int, float]) -> None:
+        with self._petri_lock:
+            if self._petri_active:
+                raise RobotArmError("manual joint moves are locked while the Petri path is running")
         if not self.arm.ready:
             raise RobotArmError("press 'Snap to home (startup)' first")
         for index, deg in angles.items():
@@ -1087,6 +1214,9 @@ class ArmService:
         return None if pos is None else pos[2] * 1000.0
 
     def home(self) -> None:
+        with self._petri_lock:
+            if self._petri_active:
+                raise RobotArmError("home is locked while the Petri path is running")
         if not self.arm.ready:
             raise RobotArmError("press 'Snap to home (startup)' first")
         with self._lock:
@@ -1248,6 +1378,11 @@ def make_handler(service: ArmService) -> type[BaseHTTPRequestHandler]:
                 self._json(load_model(service.ik))
             elif self.path == "/api/status":
                 self._json(service.status())
+            elif self.path == "/api/petri/status":
+                self._json(service.petri_status())
+            elif self.path == "/api/petri/bridge":
+                service.petri_bridge_heartbeat()
+                self._json({"ok": True})
             elif self.path.startswith("/camera.jpg"):
                 # Pull model: the browser asks for a frame newer than the one it has.
                 # Nothing queues up, so a slow link shows old-by-one-frame, never seconds old.
@@ -1303,7 +1438,13 @@ def make_handler(service: ArmService) -> type[BaseHTTPRequestHandler]:
             result: dict = {"ok": True}
             try:
                 body = json.loads(self.rfile.read(length) or b"{}")
-                if self.path == "/api/startup":
+                if self.path == "/api/petri/run":
+                    service.start_petri_transfer(float(body.get("speed", 1.5)))
+                elif self.path == "/api/petri/bridge":
+                    service.petri_bridge_heartbeat()
+                elif self.path == "/api/petri/event_ack":
+                    service.petri_event_ack(int(body["event_seq"]))
+                elif self.path == "/api/startup":
                     if not body.get("confirmed"):
                         raise RobotArmError("startup not confirmed")
                     service.startup()

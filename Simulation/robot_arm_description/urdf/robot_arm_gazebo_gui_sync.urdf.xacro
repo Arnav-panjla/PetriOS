@@ -292,13 +292,6 @@
       </material>
     </visual>
 
-    <collision>
-      <origin xyz="-0.014123 0.301592 -0.205839" rpy="0 0 0"/>
-      <geometry>
-        <mesh filename="package://robot_arm_description/meshes/left_gripper_link.stl" scale="0.001 0.001 0.001"/>
-      </geometry>
-    </collision>
-
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <mass value="0.05"/>
@@ -344,13 +337,6 @@
       </material>
     </visual>
 
-    <collision>
-      <origin xyz="-0.023127 0.301587 -0.205839" rpy="0 0 0"/>
-      <geometry>
-        <mesh filename="package://robot_arm_description/meshes/right_gripper_link.stl" scale="0.001 0.001 0.001"/>
-      </geometry>
-    </collision>
-
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <mass value="0.05"/>
@@ -382,7 +368,7 @@
 
   <!-- ========================================================= -->
   <!-- LEFT FINGER -->
-  <!-- LEFT FINGER (ACTIVE COLLISION SURFACE FOR GRASPING)       -->
+  <!-- LEFT FINGER (visual; detachable joint models simulation grasp) -->
   <!-- ========================================================= -->
 
   <link name="left_finger">
@@ -395,13 +381,6 @@
         <color rgba="0.20 0.85 0.65 1.0"/>
       </material>
     </visual>
-
-    <collision>
-      <origin xyz="-0.002620 0.292298 -0.199839" rpy="0 0 0"/>
-      <geometry>
-        <mesh filename="package://robot_arm_description/meshes/left_finger.stl" scale="0.001 0.001 0.001"/>
-      </geometry>
-    </collision>
 
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0"/>
@@ -422,7 +401,7 @@
 
   <!-- ========================================================= -->
   <!-- RIGHT FINGER -->
-  <!-- RIGHT FINGER (ACTIVE COLLISION SURFACE FOR GRASPING)      -->
+  <!-- RIGHT FINGER (visual; detachable joint models simulation grasp) -->
   <!-- ========================================================= -->
 
   <link name="right_finger">
@@ -435,13 +414,6 @@
         <color rgba="0.95 0.45 0.30 1.0"/>
       </material>
     </visual>
-
-    <collision>
-      <origin xyz="-0.034280 0.292093 -0.202839" rpy="0 0 0"/>
-      <geometry>
-        <mesh filename="package://robot_arm_description/meshes/right_finger.stl" scale="0.001 0.001 0.001"/>
-      </geometry>
-    </collision>
 
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0"/>

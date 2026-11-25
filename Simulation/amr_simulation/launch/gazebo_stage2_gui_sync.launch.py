@@ -4,7 +4,7 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction, SetEnvironmentVariable, TimerAction
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription, OpaqueFunction, SetEnvironmentVariable, TimerAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -60,6 +60,8 @@ def _launch_setup(context):
     )
     system_file = os.path.join(pkg_amr, "urdf", "amr_system_gui_sync.urdf.xacro")
     robot_description = xacro.process_file(system_file, mappings=mappings).toxml()
+    petri_file = os.path.join(pkg_amr, "urdf", "petri_dish.urdf.xacro")
+    petri_description = xacro.process_file(petri_file).toxml()
     world_file = os.path.join(pkg_amr, "worlds", "amr_stage1.world")
 
     robot_state_publisher = Node(
@@ -76,6 +78,16 @@ def _launch_setup(context):
         package="ros_gz_sim",
         executable="create",
         arguments=["-name", "amr_system", "-topic", "robot_description", "-x", "0", "-y", "0", "-z", "0"],
+        output="screen",
+    )
+    spawn_petri = Node(
+        package="ros_gz_sim", executable="create", output="screen",
+        arguments=["-name", "petri_dish_1", "-string", petri_description,
+                   "-x", "0.280014", "-y", "-0.280014", "-z", "0.2400"],
+    )
+    initial_detach = ExecuteProcess(
+        cmd=["ign", "topic", "-t", "/petri_dish_1/detach",
+             "-m", "ignition.msgs.Empty", "-p", "unused: true"],
         output="screen",
     )
 
@@ -106,11 +118,13 @@ def _launch_setup(context):
         SetEnvironmentVariable("GZ_SIM_RESOURCE_PATH", resource_path),
         robot_state_publisher,
         gazebo,
-        spawn,
-        TimerAction(period=3.0, actions=[spawner("joint_state_broadcaster")]),
-        TimerAction(period=4.0, actions=[spawner("arm_controller")]),
-        TimerAction(period=5.0, actions=[spawner("gripper_controller")]),
-        TimerAction(period=6.0, actions=[bridge]),
+        TimerAction(period=2.0, actions=[spawn]),
+        TimerAction(period=3.0, actions=[spawn_petri]),
+        TimerAction(period=4.0, actions=[initial_detach]),
+        TimerAction(period=5.0, actions=[spawner("joint_state_broadcaster")]),
+        TimerAction(period=6.0, actions=[spawner("arm_controller")]),
+        TimerAction(period=7.0, actions=[spawner("gripper_controller")]),
+        TimerAction(period=8.0, actions=[bridge]),
     ]
 
 
@@ -120,7 +134,7 @@ def generate_launch_description():
             DeclareLaunchArgument("gui_url", default_value="http://127.0.0.1:8000"),
             DeclareLaunchArgument("poll_hz", default_value="20.0"),
             DeclareLaunchArgument("http_timeout_s", default_value="2.0"),
-            DeclareLaunchArgument("trajectory_duration_s", default_value="0.1"),
+            DeclareLaunchArgument("trajectory_duration_s", default_value="0.05"),
             DeclareLaunchArgument("gz_args", default_value="-r"),
             OpaqueFunction(function=_launch_setup),
         ]

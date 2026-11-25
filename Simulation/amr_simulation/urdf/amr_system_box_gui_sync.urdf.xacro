@@ -1,0 +1,72 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="amr_system_box">
+
+  <!-- Presentation layout: GUI-synchronised arm, camera stand and simple box. -->
+  <xacro:include
+    filename="$(find robot_arm_description)/urdf/robot_arm_gazebo_gui_sync.urdf.xacro"/>
+  <xacro:include
+    filename="$(find camera_housing)/urdf/camera_stand_gazebo.urdf.xacro"/>
+
+  <link name="world"/>
+
+  <joint name="world_to_arm" type="fixed">
+    <parent link="world"/>
+    <child link="base_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!--
+    Box bottom-centre relative to the arm base centre:
+      x = +0.247487 m, y = -0.247487 m, z = 0 m
+      radial distance = 0.350 m, bearing = -45 degrees
+    Box dimensions: 0.180 x 0.140 x 0.180 m (L x W x H).
+    The link origin is at the box bottom centre; geometry is lifted by H/2.
+  -->
+  <link name="presentation_box_link">
+    <visual>
+      <origin xyz="0 0 0.090" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.180 0.140 0.180"/>
+      </geometry>
+      <material name="presentation_box_material">
+        <color rgba="0.38 0.24 0.12 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.090" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.180 0.140 0.180"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0.090" rpy="0 0 0"/>
+      <mass value="2.0"/>
+      <inertia
+        ixx="0.009667" ixy="0" ixz="0"
+        iyy="0.010800" iyz="0" izz="0.008667"/>
+    </inertial>
+  </link>
+
+  <joint name="world_to_presentation_box" type="fixed">
+    <parent link="world"/>
+    <child link="presentation_box_link"/>
+    <origin xyz="0.247487 -0.247487 0" rpy="0 0 -0.78539816339"/>
+  </joint>
+
+  <!-- Preserve the calibrated camera pose from the stage-2 layout. -->
+  <joint name="world_to_camera" type="fixed">
+    <parent link="world"/>
+    <child link="camera_shousing_link"/>
+    <origin xyz="-0.061399 -0.5164101615 0" rpy="0 0 -1.57079632679"/>
+  </joint>
+
+  <gazebo reference="presentation_box_link">
+    <static>true</static>
+    <material>Gazebo/Wood</material>
+  </gazebo>
+
+  <gazebo reference="camera_shousing_link">
+    <static>true</static>
+  </gazebo>
+
+</robot>
