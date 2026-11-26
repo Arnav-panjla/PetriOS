@@ -68,3 +68,41 @@ def test_poll_waits_for_both_controllers_and_holds_on_disconnect(monkeypatch):
     assert len(arm.messages) == len(gripper.messages) == 1
     node.destroy_node()
     rclpy.shutdown()
+
+
+def test_poll_acknowledges_csv_dish_event_after_joint_settle(monkeypatch):
+    rclpy.init()
+    node = bridge_node.GuiToGazeboBridge()
+    node.arm_pub = FakePublisher(subscriptions=1)
+    node.gripper_pub = FakePublisher(subscriptions=1)
+    status = {**STATUS, "transfer": {"active": True, "event_seq": 1, "event_kind": "attach"}}
+    sent = []
+    acknowledgments = []
+
+    def request(_base, path, _timeout, body=None):
+        if path == "/api/model":
+            return MODEL
+        if path == "/api/status":
+            return status
+        if path == "/api/petri/event_ack":
+            acknowledgments.append(body["event_seq"])
+        return {"ok": True}
+
+    monkeypatch.setattr(bridge_node, "request_json", request)
+    monkeypatch.setattr(bridge_node, "send_dish_event", sent.append)
+    node.poll()
+    assert sent == []
+    assert acknowledgments == []
+
+    arm, gripper = node.pending
+    node.joint_positions = dict(zip(
+        bridge_node.ARM_JOINT_NAMES + bridge_node.GRIPPER_JOINT_NAMES,
+        arm + gripper,
+    ))
+    node.poll()
+    assert sent == ["attach"]
+    assert acknowledgments == [1]
+    node.poll()
+    assert sent == ["attach"]
+    node.destroy_node()
+    rclpy.shutdown()

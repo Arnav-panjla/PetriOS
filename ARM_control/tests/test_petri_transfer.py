@@ -30,6 +30,9 @@ def test_qr_hold_recording_matches_current_transfer() -> None:
         assert point["angles"] == pytest.approx(step.servo_deg, abs=0.0005)
     assert points[0]["angles"][:5] == points[1]["angles"][:5]
     assert [p["hold_s"] for p in points] == [0, 6] + [0] * 22
+    assert [(p["n"], p["event"]) for p in points if p["event"]] == [
+        (4, "attach"), (21, "detach"),
+    ]
 
 
 def test_station_boundary_offsets() -> None:

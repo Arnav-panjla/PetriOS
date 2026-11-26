@@ -25,6 +25,7 @@ def test_recorder_writes_and_reads_back(tmp_path) -> None:
     loaded = rec.load(path.name)
     assert [p["angles"] for p in loaded] == [[1, 2, 3, 4, 5, 6], [10.5, 20, 30, 40, 50, 60]]
     assert [p["hold_s"] for p in loaded] == [0, 0]
+    assert [p["event"] for p in loaded] == [None, None]
     assert "n,time,j0,j1,j2,j3,j4,j5" in path.read_text()
 
 
@@ -141,3 +142,48 @@ def test_playback_stop_interrupts_a_hold(tmp_path) -> None:
     wait_idle(svc)
     assert svc.commanded() == pytest.approx(home)
     assert "Stopped" in svc.session_status()["message"]
+
+
+def test_playback_waits_for_gazebo_dish_events(tmp_path) -> None:
+    svc = make_service(tmp_path)
+    svc.simulation_only = True
+    svc.petri_bridge_heartbeat()
+    home = svc.commanded()
+    first = list(home); first[0] += 1
+    second = list(home); second[0] += 2
+    third = list(home); third[0] += 3
+    path = tmp_path / "session_dish_events.csv"
+    path.write_text(
+        "n,stage,j0,j1,j2,j3,j4,j5,hold_s,event\n"
+        + "1,grip," + ",".join(map(str, first)) + ",0,attach\n"
+        + "2,carry," + ",".join(map(str, second)) + ",0,\n"
+        + "3,release," + ",".join(map(str, third)) + ",0,detach\n",
+        encoding="utf-8",
+    )
+    svc.session_play(path.name)
+    for event, pose in (("attach", first), ("detach", third)):
+        deadline = time.monotonic() + 3
+        while svc.petri_status()["event_kind"] != event:
+            assert time.monotonic() < deadline
+            time.sleep(0.01)
+        status = svc.petri_status()
+        assert status["active"]
+        assert svc.commanded() == pytest.approx(pose)
+        svc.petri_event_ack(status["event_seq"])
+    wait_idle(svc)
+    assert svc.commanded() == pytest.approx(third)
+    assert "done" in svc.session_status()["message"]
+
+
+def test_simulated_dish_event_requires_gazebo_bridge(tmp_path) -> None:
+    svc = make_service(tmp_path)
+    svc.simulation_only = True
+    path = tmp_path / "session_dish_event.csv"
+    path.write_text(
+        "n,stage,j0,j1,j2,j3,j4,j5,hold_s,event\n"
+        + "1,grip," + ",".join(map(str, svc.commanded())) + ",0,attach\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(RobotArmError, match="bridge is not connected"):
+        svc.session_play(path.name)
+    assert not svc._playing

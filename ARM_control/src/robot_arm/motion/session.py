@@ -73,7 +73,7 @@ class SessionRecorder:
         return sorted((p.name for p in self.directory.glob("session_*.csv")), reverse=True)
 
     def load(self, name: str) -> list[dict]:
-        """Read a saved session, including optional hold_s after each pose."""
+        """Read a saved session, including optional hold_s and Gazebo dish event."""
         if name not in self.files():
             raise ValueError(f"unknown session file: {name}")
         points = []
@@ -81,12 +81,15 @@ class SessionRecorder:
             if not line.strip() or line.startswith("#") or line.startswith("n,"):
                 continue
             parts = line.split(",")
-            if len(parts) not in (2 + JOINTS, 3 + JOINTS):
+            if len(parts) not in (2 + JOINTS, 3 + JOINTS, 4 + JOINTS):
                 raise ValueError(f"{name}: bad row {line!r}")
-            hold_s = float(parts[-1]) if len(parts) == 3 + JOINTS else 0.0
+            hold_s = float(parts[2 + JOINTS]) if len(parts) >= 3 + JOINTS else 0.0
             if not math.isfinite(hold_s) or not 0 <= hold_s <= 60:
                 raise ValueError(f"{name}: hold_s must be between 0 and 60 seconds")
+            event = parts[3 + JOINTS].strip() if len(parts) == 4 + JOINTS else ""
+            if event not in ("", "attach", "detach"):
+                raise ValueError(f"{name}: event must be attach, detach, or empty")
             points.append({"n": int(parts[0]), "time": parts[1],
                            "angles": [float(v) for v in parts[2:2 + JOINTS]],
-                           "hold_s": hold_s})
+                           "hold_s": hold_s, "event": event or None})
         return points

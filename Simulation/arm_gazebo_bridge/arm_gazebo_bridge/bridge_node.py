@@ -79,7 +79,7 @@ class GuiToGazeboBridge(Node):
             transfer = status.get("transfer") or {}
             event_seq = int(transfer.get("event_seq", 0))
             event_kind = transfer.get("event_kind")
-            waiting = event_seq > self.last_transfer_event and transfer.get("active")
+            waiting = event_seq > self.last_transfer_event and transfer.get("active") and event_kind is not None
             if waiting and not self._settled(*self.pending):
                 now = time.monotonic()
                 if now - self.last_settle_log >= 2.0:

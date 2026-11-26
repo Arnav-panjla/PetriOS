@@ -995,6 +995,7 @@ class ArmService:
         self._petri_event_ack = 0
         self._petri_bridge_seen = 0.0
         self._petri_mirror_gazebo = False
+        self._play_event_enabled = False
         self.home_deg = list(home_degrees) if home_degrees is not None else [j.home_deg for j in arm.config.joints]
         self.home_source = "(saved in configs/home.txt)" if saved_home else "(from joints.yaml)"
         self.home_version = 0
@@ -1099,7 +1100,7 @@ class ArmService:
     def petri_status(self) -> dict:
         with self._petri_lock:
             return {
-                "active": self._petri_active,
+                "active": self._petri_active or (self._playing and self._play_event_enabled),
                 "stage": self._petri_stage,
                 "message": self._petri_message,
                 "event_seq": self._petri_event_seq,
@@ -1112,10 +1113,12 @@ class ArmService:
 
     def petri_event_ack(self, event_seq: int) -> None:
         with self._petri_lock:
-            if self._petri_active and event_seq == self._petri_event_seq:
+            if (self._petri_active or (self._playing and self._play_event_enabled)) and event_seq == self._petri_event_seq:
                 self._petri_event_ack = event_seq
 
     def start_petri_transfer(self, speed: float) -> None:
+        if self._playing:
+            raise RobotArmError("stop the recorded session before following the Petri path")
         max_speed = 6.0 if self.simulation_only else 3.0
         if not 0.2 <= speed <= max_speed:
             raise ValueError(f"speed must be between 0.2 and {max_speed:g} for this mode")
@@ -1263,9 +1266,14 @@ class ArmService:
                     low, high = LIMITS_DEG[index]
                     if not low <= deg <= high:
                         raise ValueError(f"{name} point {p['n']}: joint {index} angle {deg:.1f} outside {low:g}..{high:g}")
+            has_events = any(p.get("event") for p in points)
+            bridge_connected = time.monotonic() - self._petri_bridge_seen <= 3.0
+            if has_events and self.simulation_only and not bridge_connected:
+                raise RobotArmError("Gazebo sync bridge is not connected; launch gazebo_stage2_gui_sync first")
             with self._lock:
                 if self._busy or self._pending:
                     raise RobotArmError("wait for the current arm command to finish")
+            self._play_event_enabled = has_events and bridge_connected
             self._playing = True
             self._play_stop.clear()
             self._play_index = 0
@@ -1299,13 +1307,37 @@ class ArmService:
                     if self._play_stop.wait(hold_s):
                         self._play_message = f"Stopped at point {i} of {len(points)}"
                         break
+                event_kind = p.get("event")
+                if event_kind and self._play_event_enabled:
+                    with self._petri_lock:
+                        self._petri_event_seq += 1
+                        event_seq = self._petri_event_seq
+                        self._petri_event_kind = event_kind
+                        self._petri_event_ack = 0
+                    self._play_message = f"Waiting for Gazebo to {event_kind} dish at point {i}"
+                    deadline = time.monotonic() + 15.0
+                    while time.monotonic() < deadline:
+                        with self._petri_lock:
+                            if self._petri_event_ack == event_seq:
+                                self._petri_event_kind = None
+                                break
+                        if self._play_stop.wait(0.05):
+                            self._play_message = f"Stopped at point {i} of {len(points)}"
+                            break
+                    else:
+                        raise RobotArmError(f"Gazebo did not acknowledge {event_kind}; check Gazebo bridge and joint state")
+                    if self._play_stop.is_set():
+                        break
             else:
                 self._play_message = f"Played {name}: {len(points)} point(s) done"
         except Exception as exc:  # keep the GUI alive, report why playback stopped
             logger.exception("session playback stopped")
             self._play_message = f"Stopped at point {self._play_index} of {len(points)}: {exc}"
         finally:
+            with self._petri_lock:
+                self._petri_event_kind = None
             self._playing = False
+            self._play_event_enabled = False
 
     def startup(self) -> None:
         if self._playing:

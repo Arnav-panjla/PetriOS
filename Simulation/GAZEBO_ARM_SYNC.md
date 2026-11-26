@@ -191,8 +191,11 @@ gripper at the same arm pose and holds for six seconds; point 3 enters the
 carousel. The optional `hold_s` column pauses after its row's motion. Older
 eight-column recordings still play without a hold. The pause only keeps the
 arm stationary; the QR reader must be running separately. A GUI-sync Gazebo
-bridge mirrors the arm angles during CSV playback, but CSV playback does not
-send the simulated dish attach and detach events.
+bridge mirrors the arm angles during CSV playback. The CSV's `event` column
+asks Gazebo to attach the dish after point 4 grips it and detach after point
+21 releases it. Playback waits for the bridge to confirm each event before
+moving on. A simulation-only GUI requires a connected bridge to play this
+event-enabled CSV; hardware playback can run without Gazebo.
 
 With a normal hardware GUI (without `--simulation-only`), the same button sends
 the path's servo angles through the motor controller after the normal startup
