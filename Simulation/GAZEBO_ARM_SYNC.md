@@ -184,6 +184,16 @@ under `snapshots/camera_route_before_100mm_20261125_185428/`; the version
 immediately before the sparse transfer changes is under
 `snapshots/before_sparse_transfer_20261125/`.
 
+For a stationary QR read during CSV playback, select
+`session_petri_transfer_24_qr_hold.csv` in the GUI's **Session** section and
+press **Play**. Point 1 moves in front of the carousel; point 2 opens the
+gripper at the same arm pose and holds for six seconds; point 3 enters the
+carousel. The optional `hold_s` column pauses after its row's motion. Older
+eight-column recordings still play without a hold. The pause only keeps the
+arm stationary; the QR reader must be running separately. A GUI-sync Gazebo
+bridge mirrors the arm angles during CSV playback, but CSV playback does not
+send the simulated dish attach and detach events.
+
 With a normal hardware GUI (without `--simulation-only`), the same button sends
 the path's servo angles through the motor controller after the normal startup
 confirmation. A running Gazebo bridge will mirror those angles too. The current

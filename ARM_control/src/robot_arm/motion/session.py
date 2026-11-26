@@ -7,6 +7,7 @@ caller (the GUI service) by moving to each row in turn with the arm's own interp
 
 from __future__ import annotations
 
+import math
 import threading
 import time
 from pathlib import Path
@@ -72,7 +73,7 @@ class SessionRecorder:
         return sorted((p.name for p in self.directory.glob("session_*.csv")), reverse=True)
 
     def load(self, name: str) -> list[dict]:
-        """Read a saved session by file name. Only names from files() are accepted."""
+        """Read a saved session, including optional hold_s after each pose."""
         if name not in self.files():
             raise ValueError(f"unknown session file: {name}")
         points = []
@@ -80,7 +81,12 @@ class SessionRecorder:
             if not line.strip() or line.startswith("#") or line.startswith("n,"):
                 continue
             parts = line.split(",")
-            if len(parts) != 2 + JOINTS:
+            if len(parts) not in (2 + JOINTS, 3 + JOINTS):
                 raise ValueError(f"{name}: bad row {line!r}")
-            points.append({"n": int(parts[0]), "time": parts[1], "angles": [float(v) for v in parts[2:]]})
+            hold_s = float(parts[-1]) if len(parts) == 3 + JOINTS else 0.0
+            if not math.isfinite(hold_s) or not 0 <= hold_s <= 60:
+                raise ValueError(f"{name}: hold_s must be between 0 and 60 seconds")
+            points.append({"n": int(parts[0]), "time": parts[1],
+                           "angles": [float(v) for v in parts[2:2 + JOINTS]],
+                           "hold_s": hold_s})
         return points

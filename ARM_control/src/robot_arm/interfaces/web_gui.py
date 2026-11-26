@@ -1293,6 +1293,12 @@ class ArmService:
                         self.arm.move_all(target)
                     else:
                         self.arm.move_all(target, snap=(5,))
+                hold_s = float(p.get("hold_s", 0.0))
+                if hold_s:
+                    self._play_message = f"Holding at point {p['n']} for {hold_s:g} seconds"
+                    if self._play_stop.wait(hold_s):
+                        self._play_message = f"Stopped at point {i} of {len(points)}"
+                        break
             else:
                 self._play_message = f"Played {name}: {len(points)} point(s) done"
         except Exception as exc:  # keep the GUI alive, report why playback stopped

@@ -12,6 +12,24 @@ from robot_arm.interfaces.web_gui import ArmService, IKBridge
 from robot_arm.motion.petri_transfer import (
     DISH_NORMAL_LOCAL, SIMULATION_SCENE, Station, plan_transfer,
 )
+from robot_arm.motion.session import SessionRecorder
+
+
+def test_qr_hold_recording_matches_current_transfer() -> None:
+    home = [88.5, 69.0, 56.475, 152.0, 116.25, 41.4]
+    scene = SIMULATION_SCENE
+    steps = plan_transfer(
+        IKBridge().mod, home, home,
+        Station.from_dict(scene["source"]), Station.from_dict(scene["destination"]),
+    )
+    recordings = Path(__file__).resolve().parents[1] / "recordings"
+    points = SessionRecorder(recordings).load("session_petri_transfer_24_qr_hold.csv")
+    assert len(steps) == len(points) == 24
+    for step, point in zip(steps, points, strict=True):
+        assert point["time"] == step.stage
+        assert point["angles"] == pytest.approx(step.servo_deg, abs=0.0005)
+    assert points[0]["angles"][:5] == points[1]["angles"][:5]
+    assert [p["hold_s"] for p in points] == [0, 6] + [0] * 22
 
 
 def test_station_boundary_offsets() -> None:

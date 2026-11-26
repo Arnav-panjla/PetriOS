@@ -24,6 +24,7 @@ def test_recorder_writes_and_reads_back(tmp_path) -> None:
     assert rec.files() == [path.name]
     loaded = rec.load(path.name)
     assert [p["angles"] for p in loaded] == [[1, 2, 3, 4, 5, 6], [10.5, 20, 30, 40, 50, 60]]
+    assert [p["hold_s"] for p in loaded] == [0, 0]
     assert "n,time,j0,j1,j2,j3,j4,j5" in path.read_text()
 
 
@@ -96,3 +97,47 @@ def test_play_rejects_points_outside_joint_limits(tmp_path) -> None:
     with pytest.raises(ValueError):
         svc.session_play()
     assert not svc._playing
+
+
+def test_playback_holds_at_a_pose_then_continues(tmp_path) -> None:
+    svc = make_service(tmp_path)
+    home = svc.commanded()
+    first = list(home); first[0] += 1
+    second = list(home); second[0] += 2
+    path = tmp_path / "session_qr_hold.csv"
+    path.write_text(
+        "n,stage,j0,j1,j2,j3,j4,j5,hold_s\n"
+        + "1,open," + ",".join(map(str, first)) + ",0.3\n"
+        + "2,enter," + ",".join(map(str, second)) + ",0\n",
+        encoding="utf-8",
+    )
+    svc.session_play(path.name)
+    deadline = time.monotonic() + 3
+    while "Holding at point 1" not in svc.session_status()["message"]:
+        assert time.monotonic() < deadline
+        time.sleep(0.01)
+    assert svc.commanded() == pytest.approx(first)
+    wait_idle(svc)
+    assert svc.commanded() == pytest.approx(second)
+
+
+def test_playback_stop_interrupts_a_hold(tmp_path) -> None:
+    svc = make_service(tmp_path)
+    home = svc.commanded()
+    next_pose = list(home); next_pose[0] += 2
+    path = tmp_path / "session_stop_hold.csv"
+    path.write_text(
+        "n,stage,j0,j1,j2,j3,j4,j5,hold_s\n"
+        + "1,open," + ",".join(map(str, home)) + ",6\n"
+        + "2,enter," + ",".join(map(str, next_pose)) + ",0\n",
+        encoding="utf-8",
+    )
+    svc.session_play(path.name)
+    deadline = time.monotonic() + 3
+    while "Holding at point 1" not in svc.session_status()["message"]:
+        assert time.monotonic() < deadline
+        time.sleep(0.01)
+    svc.session_stop()
+    wait_idle(svc)
+    assert svc.commanded() == pytest.approx(home)
+    assert "Stopped" in svc.session_status()["message"]
