@@ -47,8 +47,8 @@
   <!-- ========================================================= -->
   <!-- CAROUSEL                                                   -->
   <!-- The orange U notch between two blue vertical dividers faces the arm. -->
-  <!-- Plate yaw = carousel yaw (-15 deg) + plate joint yaw (30 deg). -->
-  <!-- Carousel and dish station shifted 50 mm inward radially. -->
+  <!-- Carousel yaw is +15 deg after a 30 deg anticlockwise turn. -->
+  <!-- Carousel x is unchanged; y is -0.100 m. -->
   <!-- ========================================================= -->
 
   <joint name="world_to_carousel" type="fixed">
@@ -57,8 +57,8 @@
     <child link="carousel_base_link"/>
 
     <origin
-      xyz="0.318198 -0.318198 0.000000"
-      rpy="0 0 -0.2617993878"/>
+      xyz="0.307591398 -0.100000000 0.000000"
+      rpy="0 0 0.2617993878"/>
 
   </joint>
 
@@ -66,9 +66,9 @@
   <!-- ========================================================= -->
   <!-- CAMERA HOUSING                                             -->
   <!--                                                             -->
-  <!-- The inner U shelf has an 85 mm recessed ledge; target dish centre is (0,-.47,.0925). -->
+  <!-- The inner U shelf target is (0.06,-0.36,.0955); dish bottom rests at z=.088. -->
   <!-- The housing roof is 180-185 mm high, above the dish. -->
-  <!-- Camera station shifted 20 mm inward toward the arm. -->
+  <!-- Shifted 110 mm toward the arm from the saved camera route layout. -->
   <!-- ========================================================= -->
 
   <joint name="world_to_camera" type="fixed">
@@ -77,7 +77,7 @@
     <child link="camera_shousing_link"/>
 
     <origin
-        xyz="-0.080000 -0.550000 0.000000"
+        xyz="-0.020000 -0.440000 0.000000"
         rpy="0 0 -1.57079632679"/>
 
   </joint>

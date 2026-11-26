@@ -15,6 +15,7 @@ from sensor_msgs.msg import JointState
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
 from .direct_config import direct_mapping, load_home, load_ik, repository_root
+from .dish_event import send_dish_event
 from .mapping import ARM_JOINT_NAMES, GRIPPER_JOINT_NAMES
 
 
@@ -26,6 +27,10 @@ def _trajectory(names: list[str], targets: list[list[float]], durations: list[fl
         elapsed += duration
         point = JointTrajectoryPoint()
         point.positions = target
+        # ros2_control uses a quintic spline when both endpoint velocity and
+        # acceleration are supplied. Stop smoothly at each selected key pose.
+        point.velocities = [0.0] * len(names)
+        point.accelerations = [0.0] * len(names)
         nanoseconds = round(elapsed * 1_000_000_000)
         point.time_from_start.sec, point.time_from_start.nanosec = divmod(nanoseconds, 1_000_000_000)
         message.points.append(point)
@@ -70,14 +75,8 @@ class DirectTransfer(Node):
         )
 
     def _event(self, kind: str) -> None:
-        result = subprocess.run(
-            ["ign", "topic", "-t", f"/petri_dish_1/{kind}",
-             "-m", "ignition.msgs.Empty", "-p", "unused: true"],
-            capture_output=True, text=True, timeout=5, check=False,
-        )
-        if result.returncode:
-            raise RuntimeError(f"Gazebo {kind} failed: {result.stderr.strip()}")
-        self.get_logger().info(f"Gazebo {kind} sent")
+        send_dish_event(kind)
+        self.get_logger().info(f"Gazebo {kind} confirmed")
 
     def _dish_pose(self) -> tuple[float, float, float] | None:
         result = subprocess.run(
@@ -127,11 +126,17 @@ class DirectTransfer(Node):
                 if stage == "enter_grasp":
                     duration = max(duration, 0.30)
                 if stage == "pickup_lift":
-                    duration = max(duration, 0.35)
+                    duration = max(duration, 0.50)
                 if stage == "extract" and index < 8:
-                    duration = max(duration, 0.25)
+                    duration = max(duration, 0.60)
+                if stage in ("carry_side", "carry_camera"):
+                    duration = max(duration, 0.45)
                 if stage == "retreat" and index < 15:
-                    duration = max(duration, 0.25)
+                    duration = max(duration, 1.00)
+                if stage == "clear_camera":
+                    duration = max(duration, 0.70)
+                if stage == "home":
+                    duration = max(duration, 2.50)
                 if stage in ("grip", "release"):
                     duration = max(duration, 0.8)
                 durations.append(duration)
@@ -161,6 +166,8 @@ class DirectTransfer(Node):
                 lambda: self._settled(current_arm, current_grip, precise=precise),
                 max(20.0, duration * 6.0 + 12.0), f"{stage} joints to settle",
             )
+            if stage in ("pickup_lift", "extract"):
+                self.get_logger().info(f"dish after {stage}: {self._dish_pose()}")
             if stage == "insert":
                 self._settle_for(0.5)
                 # DetachableJoint preserves any small pickup offset. Measure the
@@ -201,7 +208,11 @@ class DirectTransfer(Node):
             for step in segment:
                 if step.event:
                     if step.event == "attach":
-                        self.get_logger().info(f"dish before attach: {self._dish_pose()}")
+                        pose = self._dish_pose()
+                        self.get_logger().info(f"dish before attach: {pose}")
+                        source = SIMULATION_SCENE["source"]["center_m"]
+                        if pose is None or math.dist(pose, source) > 0.005:
+                            raise RuntimeError("dish is not seated in the carousel before pickup")
                     self._event(step.event)
                     if step.event == "attach":
                         self._settle_for(0.2)

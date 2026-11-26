@@ -83,14 +83,14 @@ def _launch_setup(context):
     spawn_petri = Node(
         package="ros_gz_sim", executable="create", output="screen",
         arguments=["-name", "petri_dish_1", "-string", petri_description,
-                   "-x", "0.280014", "-y", "-0.280014", "-z", "0.2400"],
+                   "-x", "0.207135256", "-y", "-0.073082858", "-z", "0.2400",
+                   "-Y", "0.5235987756"],
     )
     initial_detach = ExecuteProcess(
         cmd=["ign", "topic", "-t", "/petri_dish_1/detach",
              "-m", "ignition.msgs.Empty", "-p", "unused: true"],
         output="screen",
     )
-
     def spawner(name):
         return Node(
             package="controller_manager",

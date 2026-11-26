@@ -6,7 +6,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="1.57079632679 0 0"/>
       <geometry>
-        <mesh filename="package://camera_housing/meshes/camera_shousing.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="package://camera_housing/meshes/camera_shousing_no_roof_collision.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="mat_camera">
         <color rgba="0.2 0.2 0.2 1.0"/>
@@ -16,9 +16,39 @@
     <collision>
       <origin xyz="0 0 0" rpy="1.57079632679 0 0"/>
       <geometry>
-        <!-- Gazebo-only collision mesh omits the 180-185 mm roof plate so the Petri dish can pass through it. -->
         <mesh filename="package://camera_housing/meshes/camera_shousing_no_roof_collision.stl" scale="0.001 0.001 0.001"/>
       </geometry>
+    </collision>
+
+    <!-- The roof's front U opening is 110 mm wide and 110 mm deep. A level
+         90 mm dish can descend at the front of the housing with 10 mm side
+         clearance, then slide under the rear strip to the shelf. -->
+    <visual>
+      <origin xyz="-0.025 0.080 0.1825" rpy="0 0 0"/>
+      <geometry><box size="0.050 0.160 0.005"/></geometry>
+      <material name="mat_camera"/>
+    </visual>
+    <collision>
+      <origin xyz="-0.025 0.080 0.1825" rpy="0 0 0"/>
+      <geometry><box size="0.050 0.160 0.005"/></geometry>
+    </collision>
+    <visual>
+      <origin xyz="-0.105 0.0125 0.1825" rpy="0 0 0"/>
+      <geometry><box size="0.110 0.025 0.005"/></geometry>
+      <material name="mat_camera"/>
+    </visual>
+    <collision>
+      <origin xyz="-0.105 0.0125 0.1825" rpy="0 0 0"/>
+      <geometry><box size="0.110 0.025 0.005"/></geometry>
+    </collision>
+    <visual>
+      <origin xyz="-0.105 0.1475 0.1825" rpy="0 0 0"/>
+      <geometry><box size="0.110 0.025 0.005"/></geometry>
+      <material name="mat_camera"/>
+    </visual>
+    <collision>
+      <origin xyz="-0.105 0.1475 0.1825" rpy="0 0 0"/>
+      <geometry><box size="0.110 0.025 0.005"/></geometry>
     </collision>
 
     <inertial>

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import subprocess
 import time
 
 import rclpy
@@ -11,6 +10,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import JointState
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
+from .dish_event import send_dish_event
 from .mapping import (
     ARM_JOINT_NAMES,
     GRIPPER_JOINT_NAMES,
@@ -46,6 +46,7 @@ class GuiToGazeboBridge(Node):
         )
         self.mapping: ServoMapping | None = None
         self.pending: tuple[list[float], list[float]] | None = None
+        self.last_published: tuple[list[float], list[float]] | None = None
         self.connected = False
         self.last_error = ""
         self.last_transfer_event = 0
@@ -92,14 +93,7 @@ class GuiToGazeboBridge(Node):
             if waiting and self._settled(*self.pending):
                 if event_kind not in ("attach", "detach"):
                     raise ValueError(f"unknown Petri event {event_kind!r}")
-                topic = f"/petri_dish_1/{event_kind}"
-                sent = subprocess.run(
-                    ["ign", "topic", "-t", topic, "-m", "ignition.msgs.Empty",
-                     "-p", "unused: true"], capture_output=True, text=True,
-                    timeout=3.0, check=False,
-                )
-                if sent.returncode != 0:
-                    raise ValueError(f"Gazebo {event_kind} failed: {sent.stderr.strip()}")
+                send_dish_event(event_kind)
                 request_json(self.gui_url, "/api/petri/event_ack", self.timeout,
                              {"event_seq": event_seq})
                 self.last_transfer_event = event_seq
@@ -107,7 +101,7 @@ class GuiToGazeboBridge(Node):
                 self.get_logger().info("GUI connected; calibrated mapping loaded")
             self.connected = True
             self.last_error = ""
-        except (GuiConnectionError, ValueError, OSError, subprocess.TimeoutExpired) as exc:
+        except (GuiConnectionError, ValueError, RuntimeError, OSError) as exc:
             message = str(exc)
             if message != self.last_error:
                 self.get_logger().error(f"GUI unavailable; holding last Gazebo command: {message}")
@@ -118,8 +112,16 @@ class GuiToGazeboBridge(Node):
         if self.arm_pub.get_subscription_count() == 0 or self.gripper_pub.get_subscription_count() == 0:
             return
         arm, gripper = self.pending
+        if self.last_published is not None:
+            previous_arm, previous_gripper = self.last_published
+            if max(abs(a - b) for a, b in zip(
+                    arm + gripper, previous_arm + previous_gripper, strict=True)) < 1e-4:
+                # An identical goal restarts Gazebo's interpolation. Hold the
+                # target so attach/detach can wait for joint states to settle.
+                return
         self.arm_pub.publish(self._trajectory(ARM_JOINT_NAMES, arm))
         self.gripper_pub.publish(self._trajectory(GRIPPER_JOINT_NAMES, gripper))
+        self.last_published = (arm.copy(), gripper.copy())
 
     def _trajectory(self, names: list[str], positions: list[float]) -> JointTrajectory:
         message = JointTrajectory()

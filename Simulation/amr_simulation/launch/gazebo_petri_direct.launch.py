@@ -1,4 +1,4 @@
-"""Launch the Petri scene and run its transfer directly in Gazebo."""
+"""Launch the Petri scene; optionally run its direct transfer."""
 
 import os
 
@@ -16,6 +16,9 @@ from arm_gazebo_bridge.direct_config import DIRECT_TCP_M, direct_mapping, load_h
 
 def _launch_setup(context):
     speed = float(LaunchConfiguration("speed").perform(context))
+    run_transfer = LaunchConfiguration("run_transfer").perform(context).lower()
+    if run_transfer not in ("true", "false"):
+        raise ValueError("run_transfer must be true or false")
     gz_args = LaunchConfiguration("gz_args").perform(context)
 
     # The calibration files are read directly. No GUI process or hardware driver
@@ -79,14 +82,14 @@ def _launch_setup(context):
     spawn_petri = Node(
         package="ros_gz_sim", executable="create", output="screen",
         arguments=["-name", "petri_dish_1", "-string", petri_description,
-                   "-x", "0.280014", "-y", "-0.280014", "-z", "0.2400"],
+                   "-x", "0.207135256", "-y", "-0.073082858", "-z", "0.2400",
+                   "-Y", "0.5235987756"],
     )
     initial_detach = ExecuteProcess(
         cmd=["ign", "topic", "-t", "/petri_dish_1/detach",
              "-m", "ignition.msgs.Empty", "-p", "unused: true"],
         output="screen",
     )
-
     def spawner(name):
         return Node(
             package="controller_manager",
@@ -102,7 +105,7 @@ def _launch_setup(context):
         parameters=[{"speed": speed}],
     )
 
-    return [
+    actions = [
         # Ubuntu's ROS Python and SciPy use the system NumPy. A user-site NumPy
         # can be ABI-incompatible with them, so isolate the spawned runner.
         SetEnvironmentVariable("PYTHONNOUSERSITE", "1"),
@@ -116,14 +119,17 @@ def _launch_setup(context):
         TimerAction(period=5.0, actions=[spawner("joint_state_broadcaster")]),
         TimerAction(period=6.0, actions=[spawner("arm_controller")]),
         TimerAction(period=7.0, actions=[spawner("gripper_controller")]),
-        TimerAction(period=9.0, actions=[direct_transfer]),
     ]
+    if run_transfer == "true":
+        actions.append(TimerAction(period=9.0, actions=[direct_transfer]))
+    return actions
 
 
 def generate_launch_description():
     return LaunchDescription(
         [
             DeclareLaunchArgument("speed", default_value="1.5"),
+            DeclareLaunchArgument("run_transfer", default_value="false"),
             DeclareLaunchArgument("gz_args", default_value="-r"),
             OpaqueFunction(function=_launch_setup),
         ]

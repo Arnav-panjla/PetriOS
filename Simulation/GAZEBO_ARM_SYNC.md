@@ -16,27 +16,39 @@ uses the corresponding `*_gui_sync` files and does not alter the legacy path.
 
 ## Local simulation-only run
 
-### Direct Gazebo transfer (no GUI)
+### Gazebo scene preview (no GUI)
 
-This is the quickest way to inspect the complete pickup and placement. Stop
-any older Gazebo launch first, then run:
+This is the quickest way to inspect the current fixture positions. Stop any
+older Gazebo launch first, then run:
 
 ```bash
 cd /home/manashvi/PetriOS
 source /opt/ros/humble/setup.bash
 colcon build --base-paths Simulation --cmake-args -DPython3_EXECUTABLE=/usr/bin/python3
 source install/setup.bash
-ros2 launch amr_simulation gazebo_petri_direct.launch.py speed:=1.5
+ros2 launch amr_simulation gazebo_petri_direct.launch.py
 ```
 
-The new launch reads the saved home and IK calibration directly, spawns the
-carousel dish and camera housing, and commands Gazebo's arm and gripper
-controllers without a web GUI or physical motor driver. It groups path
-waypoints into timed ROS trajectories and aligns the held dish horizontally
-with the camera shelf before release. `speed:=1.0` runs more slowly;
-`speed:=2.0` runs faster. Stop the launch and start it again to reset the dish.
-The terminal prints each stage and the final dish center error. Do not run a
-GUI-sync Gazebo launch in the same ROS domain at the same time.
+The launch reads the saved home and IK calibration directly and spawns the arm,
+carousel dish, and camera housing without a web GUI or physical motor driver.
+Pickup and release wait for Gazebo to publish the corresponding attached or
+detached state before the next arm movement.
+To run the full pickup and placement after inspecting the scene, relaunch with:
+
+```bash
+ros2 launch amr_simulation gazebo_petri_direct.launch.py run_transfer:=true speed:=3.0
+```
+
+For headless Gazebo, add `gz_args:='-r -s'`. Do not run a GUI-sync Gazebo
+launch in the same ROS domain at the same time.
+
+The transfer planner now validates the path internally and keeps only the
+joint targets that can be joined by the controller's smooth quintic
+interpolation without leaving the planned route. The current scene uses
+24 commanded targets. J5 uses the recorded hardware
+commands: 16 degrees to open before pickup, 134.5 degrees to grip, and
+11.5 degrees to release. The recording supplies gripper angles only; its arm
+positions belong to a different fixture layout.
 
 ### GUI-synchronized run
 
@@ -150,17 +162,27 @@ above. Once the Gazebo bridge is running, expand **Petri transfer** and click
 the browser's 3D model follows its commanded servo angles, and the bridge mirrors
 those angles into Gazebo. The bridge waits for the arm to settle before attaching
 or releasing the simulated dish. The route opens the gripper at the carousel,
-enters the U slot, grips and lifts the dish, extracts it clear of the carousel,
-travels level to above the camera housing, lowers vertically through the
-collision-disabled upper plate into the inner U slot, releases, retracts
-vertically, and returns home. The upper plate remains visible in Gazebo but is
-not part of its collision mesh. Use the speed selector to adjust motion.
+enters the U slot, grips the dish, moves outward while lifting, and continues
+straight until the complete dish clears the carousel plates. It then turns
+along the arm side of the carousel,
+travels level to above the camera opening, lowers through the opening with the
+dish horizontal, slides into the inner U slot at shelf height, releases,
+retracts horizontally, moves to one low clearance pose outside the housing, and returns
+home. The roof has a 110 mm wide front U opening in both its visual and collision
+geometry. Use the speed selector to
+adjust motion.
 The selector now defaults to 3× and offers 4× and 6× for faster simulation;
 hardware mode is capped at 3×. Gazebo mirror commands use a 50 ms duration to
 track the faster GUI updates more closely.
-The carousel and dish have been moved 50 mm radially inward; the camera housing
-has been moved a further 80 mm inward from the previous scene. The dish route
-uses the opening through the collision-disabled upper plate.
+The carousel base is at (0.307591398, -0.100, 0) m with +15 degree yaw. Its
+dish is at (0.207135256, -0.073082858, 0.2400) m, rotated with the carousel.
+The camera housing is 110 mm closer to the arm than the saved working layout;
+its shelf center is now (0.06, -0.36, 0.0955) m. The dish descends at
+(0.06, -0.325) m, then slides 35 mm into the shelf. The carousel base is
+unchanged from the approved position. The earlier layout and motion are saved
+under `snapshots/camera_route_before_100mm_20261125_185428/`; the version
+immediately before the sparse transfer changes is under
+`snapshots/before_sparse_transfer_20261125/`.
 
 With a normal hardware GUI (without `--simulation-only`), the same button sends
 the path's servo angles through the motor controller after the normal startup
