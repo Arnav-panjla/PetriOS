@@ -29,6 +29,7 @@ from pathlib import Path
 from robot_arm.config import RobotConfig
 from robot_arm.control.arm_controller import STARTUP_WARNING, ArmController
 from robot_arm.hardware.driver import NoOpDriver, PCA9685Driver
+from robot_arm.motion.pause import PausableClock
 from robot_arm.motion.session import SessionRecorder
 from robot_arm.utils.errors import RobotArmError
 from robot_arm.vision.esp32_serial import SerialCamera
@@ -232,9 +233,12 @@ canvas:active{cursor:grabbing}
    <pre id="petri_status">Petri path is idle.</pre>
   </div></details>
   <details class="card" id="sess" open><summary>Session recorder <small>saves joint poses to recordings/</small></summary><div class="body">
-   <p class="muted" style="font-size:13px">Move the arm with the sliders, then press Record to save every joint's angle as one point. Play goes to each point in order using the arm's own interpolation.</p>
+   <p class="muted" style="font-size:13px">Move the arm with the sliders, then press Record to save every joint's angle as one point. While a session is open, Hold becomes Record hold: it saves a wait of that many seconds after the last point. Play goes to each point in order using the arm's own interpolation and waits at the points that have a hold.</p>
    <div class="form"><button id="sess_start">Start session</button><button id="sess_rec" disabled>Record</button><button class="gray" id="sess_end" disabled>End session</button></div>
    <div class="form"><select id="sess_file" aria-label="Session to play"></select><button class="warn" id="sess_play" disabled>Play</button><button class="gray" id="sess_stop" disabled>Stop</button></div>
+   <div class="form"><label>Hold <input type="number" id="sess_hold_s" min="1" max="600" step="1" value="5" style="width:64px"> s</label>
+    <button class="warn" id="sess_hold" title="Freeze the arm where it is for this long, then carry on with whatever it was doing">Hold</button>
+    <button class="gray" id="sess_resume" disabled>Resume now</button></div>
    <pre id="sess_msg">No session.</pre>
    <div style="overflow:auto;max-height:260px"><table id="sess_tbl" style="font-size:13px"></table></div>
   </div></details>
@@ -310,16 +314,23 @@ async function sessRefresh(){const s=await api('/api/session/status');if(s.error
   $('sess_end').disabled=!s.active||s.playing;
   $('sess_play').disabled=!rdy||s.playing||!s.files.length;
   $('sess_stop').disabled=!s.playing;
+  const rec=s.active&&!s.playing;
+  $('sess_hold').disabled=!rdy&&!rec;
+  $('sess_hold').textContent=rec?'Record hold':'Hold';
+  $('sess_hold').title=rec?'Save this wait after the last recorded point; playback pauses there':'Freeze the arm where it is for this long, then carry on with whatever it was doing';
+  $('sess_resume').disabled=!(s.hold_left>0);
   const key=s.files.join('|'),sel=$('sess_file');
   if(key!==sessFiles){const keep=sel.value;sessFiles=key;
     sel.innerHTML=s.files.map(f=>`<option value="${f}">${f}</option>`).join('');
     if(keep&&s.files.includes(keep))sel.value=keep}
-  $('sess_msg').textContent=(s.message||'No session.')+(s.active?'\\nRecording to '+s.path:'');
-  $('sess_tbl').innerHTML='<tr><th>#</th><th>time</th>'+[0,1,2,3,4,5].map(i=>`<th>J${i}</th>`).join('')+'</tr>'
-    +s.points.map(p=>`<tr class="${s.playing&&p.n===s.play_index?'cur':''}"><td>${p.n}</td><td>${p.time}</td>${p.angles.map(a=>`<td>${a.toFixed(1)}</td>`).join('')}</tr>`).join('')}
+  $('sess_msg').textContent=(s.message||'No session.')+(s.active?'\\nRecording to '+s.path:'')+(s.hold_left>0?'\\nHOLDING: '+s.hold_left.toFixed(0)+' s left':'');
+  $('sess_tbl').innerHTML='<tr><th>#</th><th>time / stage</th>'+[0,1,2,3,4,5].map(i=>`<th>J${i}</th>`).join('')+'<th>hold</th></tr>'
+    +s.points.map(p=>`<tr class="${s.playing&&p.n===s.play_index?'cur':''}"><td>${p.n}</td><td>${p.time}</td>${p.angles.map(a=>`<td>${a.toFixed(1)}</td>`).join('')}<td>${p.hold_s>0?p.hold_s+' s':''}</td></tr>`).join('')}
 const sessDo=a=>async()=>{await api('/api/session',{action:a,file:$('sess_file').value});sessRefresh()};
 $('sess_start').onclick=sessDo('start');$('sess_rec').onclick=sessDo('record');$('sess_end').onclick=sessDo('end');
 $('sess_play').onclick=sessDo('play');$('sess_stop').onclick=sessDo('stop');
+$('sess_hold').onclick=async()=>{await api('/api/session',{action:'hold',seconds:+$('sess_hold_s').value});sessRefresh()};
+$('sess_resume').onclick=sessDo('resume');
 setInterval(sessRefresh,800);
 const CYL=[['r','r','mm',1],['h','height z','mm',1],['t','theta','deg',0.5],['p','tool pitch','deg',0.5]];
 let cylLast=0,cylTimer=null;
@@ -970,6 +981,9 @@ class ArmService:
     _play_index = 0
     _play_points: list = []
     _play_message = ""
+    pause_clock = None  # robot_arm.motion.pause.PausableClock shared with the ArmController, set by main()
+    _hold_until = 0.0
+    _hold_timer: threading.Timer | None = None
 
     def __init__(
         self,
@@ -1012,6 +1026,7 @@ class ArmService:
         self._cyl_lock = threading.Lock()
         self.session = SessionRecorder(RECORDINGS_DIR)
         self._session_lock = threading.Lock()
+        self._hold_lock = threading.Lock()
         self._play_stop = threading.Event()
         threading.Thread(target=self._worker, daemon=True).start()
 
@@ -1209,6 +1224,7 @@ class ArmService:
             "playing": self._playing,
             "play_index": self._play_index,
             "message": self._play_message,
+            "hold_left": self.hold_left(),
         }
 
     def session_start(self) -> None:
@@ -1284,6 +1300,42 @@ class ArmService:
     def session_stop(self) -> None:
         """Stop after the move in progress finishes."""
         self._play_stop.set()
+        self.resume()  # a hold would otherwise keep that move from finishing
+
+    def hold_or_record(self, seconds: float) -> None:
+        """While recording, save a hold after the last recorded pose; otherwise freeze the arm now."""
+        if self.session.active and not self._playing:
+            point = self.session.set_hold(seconds)
+            self._play_message = f"Hold of {seconds:g} s saved after point {point['n']}"
+        else:
+            self.hold(seconds)
+
+    def hold(self, seconds: float) -> None:
+        """Freeze the arm where it is for `seconds`, then let the move carry on."""
+        if self.pause_clock is None:
+            raise RobotArmError("hold is not available")
+        if not 0 < seconds <= 600:
+            raise ValueError("hold time must be more than 0 and at most 600 seconds")
+        with self._hold_lock:
+            if self._hold_timer is not None:
+                self._hold_timer.cancel()
+            self.pause_clock.pause()
+            self._hold_until = time.monotonic() + seconds
+            self._hold_timer = threading.Timer(seconds, self.resume)
+            self._hold_timer.daemon = True
+            self._hold_timer.start()
+
+    def resume(self) -> None:
+        with self._hold_lock:
+            if self._hold_timer is not None:
+                self._hold_timer.cancel()
+                self._hold_timer = None
+            if self.pause_clock is not None:
+                self.pause_clock.resume()
+            self._hold_until = 0.0
+
+    def hold_left(self) -> float:
+        return max(0.0, self._hold_until - time.monotonic()) if self._hold_until else 0.0
 
     def _run_playback(self, name: str, points: list[dict]) -> None:
         try:
@@ -1301,12 +1353,18 @@ class ArmService:
                         self.arm.move_all(target)
                     else:
                         self.arm.move_all(target, snap=(5,))
-                hold_s = float(p.get("hold_s", 0.0))
-                if hold_s:
-                    self._play_message = f"Holding at point {p['n']} for {hold_s:g} seconds"
-                    if self._play_stop.wait(hold_s):
-                        self._play_message = f"Stopped at point {i} of {len(points)}"
-                        break
+                if p.get("hold_s", 0) > 0 and not self._play_stop.is_set():
+                    self._play_message = f"Holding at point {p['n']} for {p['hold_s']:g} seconds"
+                    self._hold_until = time.monotonic() + p["hold_s"]
+                    # "Resume now" (or Stop) clears _hold_until / sets the stop flag and ends the wait early
+                    while (
+                        self._hold_until
+                        and time.monotonic() < self._hold_until
+                        and not self._play_stop.is_set()
+                    ):
+                        time.sleep(0.05)
+                    if self.pause_clock is None or not self.pause_clock.paused:
+                        self._hold_until = 0.0
                 event_kind = p.get("event")
                 if event_kind and self._play_event_enabled:
                     with self._petri_lock:
@@ -1673,6 +1731,10 @@ def make_handler(service: ArmService) -> type[BaseHTTPRequestHandler]:
                         service.session_play(body.get("file") or None)
                     elif action == "stop":
                         service.session_stop()
+                    elif action == "hold":
+                        service.hold_or_record(float(body["seconds"]))
+                    elif action == "resume":
+                        service.resume()
                     else:
                         raise ValueError(f"unknown session action: {action}")
                     result = {"ok": True, "session": service.session_status()}
@@ -1828,14 +1890,16 @@ def main(argv: list[str] | None = None) -> int:
             except ImportError:
                 logger.warning("opencv/numpy missing: no rotation or QR (pip install numpy opencv-python-headless)")
             cameras[name] = (cam, view)
+    pause_clock = PausableClock()  # lets the GUI freeze a move in progress (Hold button)
     service = ArmService(
-        ArmController(config, driver),
+        ArmController(config, driver, clock=pause_clock),
         IKBridge(),
         saved_home=saved is not None,
         home_degrees=saved,
         simulation_only=args.simulation_only,
         cameras=cameras,
     )
+    service.pause_clock = pause_clock
     if not args.no_webcam:
         from robot_arm.vision.webcam import WebCam
 

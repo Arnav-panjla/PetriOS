@@ -29,6 +29,33 @@ def test_recorder_writes_and_reads_back(tmp_path) -> None:
     assert "n,time,j0,j1,j2,j3,j4,j5" in path.read_text()
 
 
+def test_hold_is_saved_on_the_last_point_and_survives_reload(tmp_path) -> None:
+    rec = SessionRecorder(tmp_path)
+    path = rec.start()
+    with pytest.raises(ValueError):
+        rec.set_hold(5)  # nothing recorded yet
+    rec.record([1, 2, 3, 4, 5, 6])
+    rec.record([7, 8, 9, 10, 11, 12])
+    rec.set_hold(5)  # after the 2nd pose
+    rec.record([13, 14, 15, 16, 17, 18])
+    rec.end()
+    assert [p["hold_s"] for p in rec.load(path.name)] == [0, 5, 0]
+    for bad in (0, -1, 601):
+        rec2 = SessionRecorder(tmp_path)
+        rec2.start()
+        rec2.record([0] * 6)
+        with pytest.raises(ValueError):
+            rec2.set_hold(bad)
+
+
+def test_old_files_without_hold_column_still_load(tmp_path) -> None:
+    (tmp_path / "session_old.csv").write_text("n,stage,j0,j1,j2,j3,j4,j5\n1,a,1,2,3,4,5,6\n2,b,1,2,3,4,5,6\n")
+    pts = SessionRecorder(tmp_path).load("session_old.csv")
+    assert [p["hold_s"] for p in pts] == [0, 0]
+    (tmp_path / "session_manual.csv").write_text("n,stage,j0,j1,j2,j3,j4,j5,hold_s\n1,a,1,2,3,4,5,6,2.5\n")
+    assert SessionRecorder(tmp_path).load("session_manual.csv")[0]["hold_s"] == 2.5
+
+
 def test_recorder_rejects_bad_input(tmp_path) -> None:
     rec = SessionRecorder(tmp_path)
     rec.start()
@@ -79,6 +106,48 @@ def test_record_then_play_returns_to_recorded_poses(tmp_path) -> None:
     assert svc.commanded() == pytest.approx(second, abs=0.01)  # ended on the last point
     assert "done" in svc.session_status()["message"]
     assert len(svc.session_status()["points"]) == 2
+
+
+def test_play_waits_at_the_recorded_hold(tmp_path) -> None:
+    svc = make_service(tmp_path)
+    svc.session_start()
+    pose1 = list(svc.commanded())
+    pose1[0] += 10
+    svc.arm.move_all(pose1)
+    svc.session_record()
+    svc.hold_or_record(0.6)  # recording: this saves a hold, it does not freeze the arm
+    assert not (svc.pause_clock and svc.pause_clock.paused)
+    pose2 = list(pose1)
+    pose2[1] += 5
+    svc.arm.move_all(pose2)
+    svc.session_record()
+    svc.session_end()
+    assert [p["hold_s"] for p in svc.session_status()["points"]] == [0.6, 0]
+
+    svc.arm.move_all(list(svc.home_deg))
+    started = time.monotonic()
+    svc.session_play()
+    saw_hold = False
+    while svc._playing:
+        saw_hold = saw_hold or svc.hold_left() > 0
+        time.sleep(0.02)
+    assert time.monotonic() - started >= 0.55
+    assert saw_hold  # the GUI can show the countdown
+    assert svc.commanded() == pytest.approx(pose2, abs=0.01)
+
+
+def test_stop_ends_a_hold_during_playback(tmp_path) -> None:
+    svc = make_service(tmp_path)
+    svc.session.start()
+    svc.session.record(list(svc.commanded()))
+    svc.session.set_hold(30)
+    svc.session.end()
+    svc.session_play()
+    time.sleep(0.3)
+    assert svc._playing and svc.hold_left() > 0
+    svc.session_stop()
+    wait_idle(svc)
+    assert "Stopped" in svc.session_status()["message"] or "done" in svc.session_status()["message"]
 
 
 def test_manual_moves_are_locked_while_playing(tmp_path) -> None:
